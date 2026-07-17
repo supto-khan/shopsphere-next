@@ -4,6 +4,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import CartDrawer from "@/components/CartDrawer";
 import LoginModal from "@/components/LoginModal";
+import { Analytics } from "@vercel/analytics/next";
 
 const lexend = Lexend({
   variable: "--font-lexend",
@@ -50,6 +51,7 @@ export default function RootLayout({
         </div>
           <CartDrawer />
           <LoginModal />
+          <Analytics />
       </body>
     </html>
   );
