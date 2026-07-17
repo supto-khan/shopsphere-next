@@ -5,6 +5,7 @@ import { useAppStore } from '@/lib/store';
 import { api } from '@/lib/api';
 import { ShoppingBag, X, Plus, Minus, Trash2, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { resolveImage } from '@/lib/image';
 
 export default function CartDrawer() {
   const {
@@ -132,15 +133,11 @@ export default function CartDrawer() {
                 const fullUrlObj = (item.product as any).thumbnail_full_url;
                 let imageSrc = '';
                 if (fullUrlObj?.path && !fullUrlObj.path.includes('def.png')) {
-                  const cleanPath = fullUrlObj.path.replace(/^https?:\/\/[^\/]+/, '');
-                  imageSrc = cleanPath.replace('storage/app/public', 'storage');
+                  imageSrc = resolveImage(fullUrlObj.path);
                 } else if (item.product.thumbnail && !item.product.thumbnail.includes('def.png')) {
-                  imageSrc = `/storage/product/thumbnail/${item.product.thumbnail}`;
+                  imageSrc = resolveImage(`/storage/product/thumbnail/${item.product.thumbnail}`);
                 } else {
                   imageSrc = '/placeholder.jpg';
-                }
-                if (imageSrc && !imageSrc.startsWith('/') && !imageSrc.startsWith('http')) {
-                  imageSrc = '/' + imageSrc;
                 }
 
                 return (

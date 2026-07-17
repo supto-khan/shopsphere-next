@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { api, Product, Category, Brand } from '@/lib/api';
 import { useAppStore } from '@/lib/store';
+import { resolveImage } from '@/lib/image';
 import ProductCard from '@/components/ProductCard';
 import Footer from '@/components/Footer';
 import ChatModal from '@/components/ChatModal';
@@ -16,12 +17,7 @@ import {
 /* ─────────────────── helpers ─────────────────── */
 
 function toProxyUrl(url?: any): string {
-  if (!url) return '/placeholder.jpg';
-  let s = typeof url === 'string' ? url : (url?.path || '');
-  if (!s || s.endsWith('def.png')) return '/placeholder.jpg';
-  let clean = s.replace(/^https?:\/\/[^/]+/, '');
-  if (!clean.startsWith('/')) clean = '/' + clean;
-  return clean.replace('storage/app/public', 'storage');
+  return resolveImage(url, '/placeholder.jpg');
 }
 
 const CURRENCY = '৳';

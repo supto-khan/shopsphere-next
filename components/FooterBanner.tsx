@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, Navigation } from 'swiper/modules';
 import { api } from '@/lib/api';
+import { resolveImage } from '@/lib/image';
 
 // Import Swiper styles
 import 'swiper/css';
@@ -37,10 +38,7 @@ interface Banner {
 }
 
 const toProxyUrl = (url?: string): string => {
-  if (!url) return '';
-  const clean = url.replace(/^https?:\/\/[^\/]+/, '');
-  const proxied = clean.replace('storage/app/public', 'storage');
-  return proxied.startsWith('/') ? proxied : '/' + proxied;
+  return resolveImage(url, '');
 };
 
 export default function FooterBanner() {

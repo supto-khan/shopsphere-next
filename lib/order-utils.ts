@@ -44,6 +44,8 @@ export function formatOrderDateTime(iso?: string): string {
   });
 }
 
+import { BACKEND_URL } from './api';
+
 // Resolve a product/shop/avatar image URL, matching the convention used across
 // the SPA (ProductCard / CartDrawer): use *_full_url.path, strip the host and
 // rewrite storage/app/public -> storage so it flows through the Next proxy.
@@ -52,7 +54,9 @@ export function resolveStorageImage(fullUrl?: any): string {
   const path = typeof fullUrl === 'string' ? fullUrl : fullUrl?.path;
   if (!path || path.includes('def.png')) return '';
   const cleanPath = path.replace(/^https?:\/\/[^/]+/, '');
-  return cleanPath.replace('storage/app/public', 'storage');
+  const cleanBackendUrl = BACKEND_URL.replace(/\/$/, '');
+  const proxied = cleanPath.replace('storage/app/public', 'storage');
+  return `${cleanBackendUrl}${proxied.startsWith('/') ? proxied : '/' + proxied}`;
 }
 
 export function resolveProductImage(product?: any): string {
@@ -60,7 +64,8 @@ export function resolveProductImage(product?: any): string {
   const fromFull = resolveStorageImage(product.thumbnail_full_url);
   if (fromFull) return fromFull;
   if (product.thumbnail && !String(product.thumbnail).includes('def.png')) {
-    return `/storage/product/thumbnail/${product.thumbnail}`;
+    const cleanBackendUrl = BACKEND_URL.replace(/\/$/, '');
+    return `${cleanBackendUrl}/storage/product/thumbnail/${product.thumbnail}`;
   }
   return '';
 }

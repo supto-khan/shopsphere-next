@@ -1,19 +1,20 @@
 import { useState } from 'react';
+import { BACKEND_URL } from './api';
 
 export function normalizeImage(fullUrl?: any): string | null {
   if (!fullUrl) return null;
   const path = typeof fullUrl === 'string' ? fullUrl : fullUrl?.path;
   if (!path || path.includes('def.png')) return '/placeholder.jpg';
   
-  // Strip backend host so it routes through Next proxy
   const cleanPath = path.replace(/^https?:\/\/[^\/]+/, '');
+  const cleanBackendUrl = BACKEND_URL.replace(/\/$/, '');
   
-  // If the path is a raw filename without folder structure, assume profile folder
   if (!cleanPath.includes('/')) {
-    return `/storage/profile/${cleanPath}`;
+    return `${cleanBackendUrl}/storage/profile/${cleanPath}`;
   }
   
-  return cleanPath.replace('storage/app/public', 'storage');
+  const proxied = cleanPath.replace('storage/app/public', 'storage');
+  return `${cleanBackendUrl}${proxied.startsWith('/') ? proxied : '/' + proxied}`;
 }
 
 export function formatOrderDate(iso?: string): string {
@@ -33,10 +34,13 @@ export function resolveProductImage(product?: any): string {
   const fullUrlObj = product.thumbnail_full_url;
   if (fullUrlObj && fullUrlObj.path && !fullUrlObj.path.includes('def.png')) {
     const cleanPath = fullUrlObj.path.replace(/^https?:\/\/[^\/]+/, '');
-    return cleanPath.replace('storage/app/public', 'storage');
+    const cleanBackendUrl = BACKEND_URL.replace(/\/$/, '');
+    const relative = cleanPath.replace('storage/app/public', 'storage');
+    return `${cleanBackendUrl}${relative.startsWith('/') ? relative : '/' + relative}`;
   }
   if (product.thumbnail && !product.thumbnail.includes('def.png')) {
-    return `/storage/product/thumbnail/${product.thumbnail}`;
+    const cleanBackendUrl = BACKEND_URL.replace(/\/$/, '');
+    return `${cleanBackendUrl}/storage/product/thumbnail/${product.thumbnail}`;
   }
   return '';
 }

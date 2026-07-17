@@ -7,6 +7,7 @@ import StarRating from "@/components/StarRating";
 import ChatModal from "@/components/ChatModal";
 import { api, Product } from "@/lib/api";
 import { useAppStore } from "@/lib/store";
+import { resolveImage } from "@/lib/image";
 import {
   ChevronRight,
   ChevronLeft,
@@ -27,21 +28,7 @@ import {
 
 /** Resolve a backend image URL to the Next.js proxy path. */
 function toProxyUrl(url?: any): string {
-  if (!url) return "/placeholder.jpg";
-  let pathStr = "";
-  if (typeof url === "string") {
-    pathStr = url;
-  } else if (typeof url === "object" && url !== null) {
-    pathStr = url.path || url.image_name || "";
-  }
-  if (!pathStr || typeof pathStr !== "string") return "/placeholder.jpg";
-  if (pathStr.endsWith("def.png")) return "/placeholder.jpg";
-  let clean = pathStr.replace(/^https?:\/\/[^\/]+/, "");
-  if (!clean.startsWith("/") && !clean.startsWith("http")) {
-    clean = "/" + clean;
-  }
-  const proxied = clean.replace("storage/app/public", "storage");
-  return proxied || "/placeholder.jpg";
+  return resolveImage(url, "/placeholder.jpg");
 }
 
 /** Extract a usable image URL from either a string or a full_url object. */
@@ -172,7 +159,7 @@ function SellerProductCard({ product: p }: { product: Product }) {
   if (fullUrlObj?.path && !fullUrlObj.path.includes("def.png"))
     imageSrc = toProxyUrl(fullUrlObj.path);
   else if (p.thumbnail && !p.thumbnail.includes("def.png"))
-    imageSrc = `/storage/product/thumbnail/${p.thumbnail}`;
+    imageSrc = toProxyUrl(`/storage/product/thumbnail/${p.thumbnail}`);
 
   return (
     <Link
@@ -248,7 +235,7 @@ function SimilarProductCard({ product: p }: { product: Product }) {
   if (fullUrlObj?.path && !fullUrlObj.path.includes("def.png"))
     imageSrc = toProxyUrl(fullUrlObj.path);
   else if (p.thumbnail && !p.thumbnail.includes("def.png"))
-    imageSrc = `/storage/product/thumbnail/${p.thumbnail}`;
+    imageSrc = toProxyUrl(`/storage/product/thumbnail/${p.thumbnail}`);
 
   return (
     <Link

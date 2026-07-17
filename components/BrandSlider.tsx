@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Brand } from '@/lib/api';
+import { resolveImage } from '@/lib/image';
 import { useRouter } from 'next/navigation';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, Navigation } from 'swiper/modules';
@@ -21,17 +22,17 @@ export default function BrandSlider({ brands }: BrandSliderProps) {
   if (!brands || brands.length === 0) return null;
 
   return (
-    <div className="relative w-full group/slider">
+    <div className="relative group">
       <Swiper
         modules={[Autoplay, Navigation]}
         autoplay={{
-          delay: 2500,
+          delay: 4000,
           disableOnInteraction: false,
-          pauseOnMouseEnter: true,
+          pauseOnMouseEnter: true
         }}
         navigation={{
-          nextEl: '.swiper-brand-next',
-          prevEl: '.swiper-brand-prev',
+          prevEl: '.brand-prev',
+          nextEl: '.brand-next',
         }}
         spaceBetween={20}
         slidesPerView={2}
@@ -49,10 +50,9 @@ export default function BrandSlider({ brands }: BrandSliderProps) {
           const fullUrlObj = (b as any).image_full_url;
           let imageSrc = '';
           if (fullUrlObj?.path && !fullUrlObj.path.includes('def.png')) {
-            const cleanPath = fullUrlObj.path.replace(/^https?:\/\/[^\/]+/, '');
-            imageSrc = cleanPath.replace('storage/app/public', 'storage');
+            imageSrc = resolveImage(fullUrlObj.path);
           } else if (b.image && !b.image.includes('def.png')) {
-            imageSrc = `/storage/brand/${b.image}`;
+            imageSrc = resolveImage(`/storage/brand/${b.image}`);
           } else {
             imageSrc = '/placeholder.jpg';
           }

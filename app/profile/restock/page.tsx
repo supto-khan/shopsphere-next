@@ -115,16 +115,7 @@ export default function RestockPage() {
             const productHref = product?.slug ? `/product/${product.slug}` : '#';
 
             // Resolve image
-            let imageSrc = '';
-            const fullUrlObj = (product as any).thumbnail_full_url;
-            if (fullUrlObj?.path && !fullUrlObj.path.includes('def.png')) {
-              const cleanPath = fullUrlObj.path.replace(/^https?:\/\/[^\/]+/, '');
-              imageSrc = cleanPath.replace('storage/app/public', 'storage');
-            } else if (product.thumbnail && !product.thumbnail.includes('def.png')) {
-              imageSrc = `/storage/product/thumbnail/${product.thumbnail}`;
-            } else {
-              imageSrc = '/placeholder.jpg';
-            }
+            const imageSrc = resolveProductImage(product) || '/placeholder.jpg';
 
             return (
               <div 

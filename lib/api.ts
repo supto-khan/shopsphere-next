@@ -172,6 +172,9 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> 
       if (errData?.message) errorMsg = errData.message;
       else if (errData?.errors?.[0]?.message) errorMsg = errData.errors[0].message;
     } catch {}
+    if (res.status === 401 && typeof window !== 'undefined') {
+      localStorage.removeItem('shopsphere_token');
+    }
     throw new Error(errorMsg);
   }
 
@@ -212,6 +215,9 @@ async function apiUpload<T>(endpoint: string, formData: FormData): Promise<T> {
       if (errData?.message) errorMsg = errData.message;
       else if (errData?.errors?.[0]?.message) errorMsg = errData.errors[0].message;
     } catch {}
+    if (res.status === 401 && typeof window !== 'undefined') {
+      localStorage.removeItem('shopsphere_token');
+    }
     throw new Error(errorMsg);
   }
 

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Product } from '@/lib/api';
 import { useAppStore } from '@/lib/store';
 import { Plus, Minus } from 'lucide-react';
+import { resolveImage } from '@/lib/image';
 
 interface ProductCardProps {
   product: Product;
@@ -35,11 +36,9 @@ export default function ProductCard({ product }: ProductCardProps) {
   let imageSrc = '';
   const fullUrlObj = (product as any).thumbnail_full_url;
   if (fullUrlObj && fullUrlObj.path && !fullUrlObj.path.includes('def.png')) {
-    // Replace absolute host (e.g. http://localhost) with relative path to route through Next.js proxy
-    const cleanPath = fullUrlObj.path.replace(/^https?:\/\/[^\/]+/, '');
-    imageSrc = cleanPath.replace('storage/app/public', 'storage');
+    imageSrc = resolveImage(fullUrlObj.path);
   } else if (product.thumbnail && !product.thumbnail.includes('def.png')) {
-    imageSrc = `/storage/product/thumbnail/${product.thumbnail}`;
+    imageSrc = resolveImage(`/storage/product/thumbnail/${product.thumbnail}`);
   } else {
     imageSrc = '/placeholder.jpg';
   }

@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, Category, Brand, BACKEND_URL } from '@/lib/api';
 import { useAppStore } from '@/lib/store';
+import { resolveImage } from '@/lib/image';
 import Footer from '@/components/Footer';
 import {
   Search,
@@ -17,18 +18,15 @@ import {
   ChevronRight,
   User,
   SlidersHorizontal,
+  RotateCcw,
+  BookOpen,
   X
 } from 'lucide-react';
 import Link from 'next/link';
 
 // Helpers
 function toProxyUrl(url?: any): string {
-  if (!url) return '/placeholder.jpg';
-  let s = typeof url === 'string' ? url : (url?.path || '');
-  if (!s || s.endsWith('def.png')) return '/placeholder.jpg';
-  let clean = s.replace(/^https?:\/\/[^\/]+/, '');
-  if (!clean.startsWith('/')) clean = '/' + clean;
-  return clean.replace('storage/app/public', 'storage');
+  return resolveImage(url, '/placeholder.jpg');
 }
 
 export default function VendorsPage() {

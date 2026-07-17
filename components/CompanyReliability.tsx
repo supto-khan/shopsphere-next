@@ -2,14 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api, BACKEND_URL } from '@/lib/api';
-
-const toProxyUrl = (url: string) => {
-  if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url;
-  }
-  return `${BACKEND_URL}${url}`;
-};
+import { resolveImage } from '@/lib/image';
 
 export default function CompanyReliability() {
   const [reliability, setReliability] = useState<any[]>([]);
@@ -33,12 +26,12 @@ export default function CompanyReliability() {
         {reliability.map((r: any, i: number) => {
           let reliabilityImg = "";
           if (r.image && typeof r.image === "object" && r.image.image_name) {
-            reliabilityImg = `${BACKEND_URL}/storage/app/public/company-reliability/${r.image.image_name}`;
+            reliabilityImg = resolveImage(`/storage/company-reliability/${r.image.image_name}`);
           } else if (r.image && typeof r.image === "string") {
-            reliabilityImg = toProxyUrl(`/storage/app/public/company-reliability/${r.image}`);
+            reliabilityImg = resolveImage(`/storage/company-reliability/${r.image}`);
           } else {
             // fallback icons mapping
-            reliabilityImg = `${BACKEND_URL}/public/assets/front-end/img/${r.item}.png`;
+            reliabilityImg = resolveImage(`/public/assets/front-end/img/${r.item}.png`);
           }
           return (
             <div

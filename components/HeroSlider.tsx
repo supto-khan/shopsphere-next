@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { resolveImage } from '@/lib/image';
 
 interface Banner {
   id: number;
@@ -117,10 +118,7 @@ export default function HeroSlider() {
   };
 
   const toProxyUrl = (url?: string): string => {
-    if (!url) return '';
-    const clean = url.replace(/^https?:\/\/[^\/]+/, '');
-    const proxied = clean.replace('storage/app/public', 'storage');
-    return proxied.startsWith('/') ? proxied : '/' + proxied;
+    return resolveImage(url, '');
   };
 
   const handleBannerClick = (b: Banner) => {

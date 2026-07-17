@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import StarRating from '@/components/StarRating';
+import { resolveProductImage } from '@/lib/profile-utils';
 import { WishlistSkeleton } from '@/components/profile-skeletons';
 import { Heart, Loader2, Plus, Minus } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
@@ -15,63 +16,59 @@ function formatAmount(amount?: number | string): string {
 export default function WishlistPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busyId, setBusyId] = useState<number | null>(null);
+  const [removingId, setRemovingId] = useState<number | null>(null);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
 
   const { cart, addToCart, updateQuantity } = useAppStore();
 
-  const load = async () => {
-    try {
-      const data = await api.getWishlist();
-      setItems(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error('Failed to load wishlist', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchWishlist();
   }, []);
 
-  const remove = async (productId: number) => {
-    setBusyId(productId);
-    try {
-      await api.removeFromWishlist(productId);
-      setItems((prev) => prev.filter((it) => it.product_id !== productId));
-    } catch (err) {
-      console.error('Failed to remove from wishlist', err);
-    } finally {
-      setBusyId(null);
-    }
+  const fetchWishlist = () => {
+    api.getWishlist()
+      .then((data) => {
+        setItems(Array.isArray(data) ? data : []);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   };
 
+  const handleRemove = (productId: number) => {
+    setRemovingId(productId);
+    api.removeFromWishlist(productId)
+      .then(() => {
+        setItems((prev) => prev.filter((w) => w.product_id !== productId));
+      })
+      .catch(console.error)
+      .finally(() => setRemovingId(null));
+  };
+
+  if (loading) {
+    return <WishlistSkeleton />;
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center space-x-3 border-b border-neutral-gray-100 pb-4">
-        <div className="w-8 h-8 rounded-xl bg-primary-50 flex items-center justify-center text-primary-600">
-          <Heart size={16} />
-        </div>
-        <h2 className="text-sm font-extrabold text-neutral-gray-900 tracking-tight">My Saved Wishlist</h2>
+    <div className="bg-neutral-white border border-neutral-gray-200/50 rounded-3xl p-5 md:p-6 shadow-sm space-y-6">
+      <div>
+        <h2 className="text-base font-extrabold text-neutral-gray-900 uppercase tracking-wider mb-1">My Wishlist</h2>
+        <p className="text-[10px] font-bold text-neutral-gray-400 uppercase tracking-widest">
+          {items.length} {items.length === 1 ? 'item' : 'items'} saved
+        </p>
       </div>
 
-      {loading ? (
-        <WishlistSkeleton />
-      ) : items.length === 0 ? (
-        <div className="bg-neutral-white border border-neutral-gray-200/50 p-12 text-center shadow-xl shadow-neutral-gray-100/10 flex flex-col items-center justify-center">
-          <div className="w-12 h-12 rounded-2xl bg-primary-50 flex items-center justify-center text-primary-600 mb-4 border border-primary-100">
-            <Heart size={20} />
+      {items.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="w-16 h-16 rounded-full bg-neutral-gray-100 flex items-center justify-center mb-4 text-neutral-gray-400">
+            <Heart size={28} />
           </div>
-          <h2 className="text-sm font-extrabold text-neutral-gray-900 mb-1.5">Your Wishlist is Empty</h2>
-          <p className="text-xs text-neutral-500 mb-6">Looks like you haven't saved any products to your wishlist yet.</p>
-          <a href="/search" className="px-5 py-2.5 bg-primary-600 hover:bg-primary-800 text-neutral-white rounded-xl text-xs font-bold shadow-lg shadow-primary-600/10 transition-all active:scale-[0.98] cursor-pointer hover:-translate-y-0.5">
-            Explore Catalog
-          </a>
+          <h3 className="text-sm font-bold text-neutral-gray-800 mb-1">Your wishlist is empty</h3>
+          <p className="text-xs text-neutral-gray-500 max-w-[240px] leading-normal">
+            Save items here to keep track of products you want to buy.
+          </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
           {items.map((w) => {
             const product = w.productFullInfo || {};
             const rating = Number(product?.rating?.average ?? 0);
@@ -82,16 +79,7 @@ export default function WishlistPage() {
             const productHref = product?.slug ? `/product/${product.slug}` : '#';
 
             // Resolve thumbnail image
-            let imageSrc = '';
-            const fullUrlObj = (product as any).thumbnail_full_url;
-            if (fullUrlObj?.path && !fullUrlObj.path.includes('def.png')) {
-              const cleanPath = fullUrlObj.path.replace(/^https?:\/\/[^\/]+/, '');
-              imageSrc = cleanPath.replace('storage/app/public', 'storage');
-            } else if (product.thumbnail && !product.thumbnail.includes('def.png')) {
-              imageSrc = `/storage/product/thumbnail/${product.thumbnail}`;
-            } else {
-              imageSrc = '/placeholder.jpg';
-            }
+            const imageSrc = resolveProductImage(product) || '/placeholder.jpg';
 
             const cartItem = cart.find((item) => item.product.id === product.id);
             const qty = cartItem ? cartItem.quantity : 0;
@@ -116,11 +104,11 @@ export default function WishlistPage() {
 
                   {/* Remove Button Overlay */}
                   <button
-                    onClick={() => remove(w.product_id)}
-                    disabled={busyId === w.product_id}
+                    onClick={() => handleRemove(w.product_id)}
+                    disabled={removingId === w.product_id}
                     className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-neutral-white hover:bg-neutral-gray-50 text-red-500 flex items-center justify-center shadow-md cursor-pointer active:scale-95 transition-all z-10 disabled:opacity-50 border border-neutral-gray-150/40"
                   >
-                    {busyId === w.product_id ? <Loader2 size={12} className="animate-spin" /> : <Heart size={14} className="fill-red-500 text-red-500" />}
+                    {removingId === w.product_id ? <Loader2 size={12} className="animate-spin" /> : <Heart size={14} className="fill-red-500 text-red-500" />}
                   </button>
 
                   {/* Discount tag */}
