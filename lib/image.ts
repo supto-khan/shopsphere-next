@@ -23,9 +23,7 @@ export function resolveImage(urlOrObj?: any, defaultPath = '/placeholder.jpg'): 
     clean = '/' + clean;
   }
   
-  const proxied = clean.replace('storage/app/public', 'storage');
-  
   // Remove any trailing slash from BACKEND_URL to prevent double slashes
   const cleanBackendUrl = BACKEND_URL.replace(/\/$/, '');
-  return `${cleanBackendUrl}${proxied}`;
+  return `${cleanBackendUrl}${clean}`;
 }
