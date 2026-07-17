@@ -236,6 +236,100 @@ function extractBrands(data: any): Brand[] {
   return [];
 }
 
+export interface BlogCategory {
+  id: number;
+  name: string;
+  slug: string;
+  click_count?: number;
+}
+
+export interface BlogTranslation {
+  id: number;
+  translation_id: number;
+  locale: string;
+  key: string;
+  value: string;
+}
+
+export interface BlogSeoInfo {
+  id: number;
+  blog_id: number;
+  meta_title?: string;
+  meta_description?: string;
+  meta_image?: string;
+  canon_url?: string;
+}
+
+export interface Blog {
+  id: number;
+  slug: string;
+  readable_id: number;
+  category_id: number;
+  writer?: string;
+  title: string;
+  description: string;
+  image?: string;
+  publish_date: string;
+  click_count: number;
+  thumbnail_full_url?: string;
+  category?: BlogCategory;
+  translations?: BlogTranslation[];
+  seo_info?: BlogSeoInfo;
+}
+
+export interface BlogListResponse {
+  blogTitle: string;
+  blogSubTitle: string;
+  blogList: {
+    current_page: number;
+    data: Blog[];
+    first_page_url: string;
+    from: number;
+    last_page: number;
+    last_page_url: string;
+    links: { url: string | null; label: string; active: boolean }[];
+    next_page_url: string | null;
+    path: string;
+    per_page: number;
+    prev_page_url: string | null;
+    to: number;
+    total: number;
+  };
+  recentBlogList: Blog[];
+  blogCategoryList: BlogCategory[];
+  downloadAppStatus?: number | boolean;
+  appTitleData?: any;
+}
+
+export interface PopularBlogResponse {
+  popularBlogList: {
+    current_page: number;
+    data: Blog[];
+    first_page_url: string;
+    from: number;
+    last_page: number;
+    last_page_url: string;
+    links: { url: string | null; label: string; active: boolean }[];
+    next_page_url: string | null;
+    path: string;
+    per_page: number;
+    prev_page_url: string | null;
+    to: number;
+    total: number;
+  };
+  blogCategoryList: BlogCategory[];
+}
+
+export interface BlogDetailsResponse {
+  blogData: Blog;
+  popularBlogList: Blog[];
+  articleLinks: { id: string; text: string }[];
+  updatedDescription: string;
+  downloadAppStatus?: number | boolean;
+  appTitleData?: any;
+}
+
+
 export const api = {
   // Customer orders
   getMyOrders: async (params?: { status?: string; limit?: number; offset?: number }): Promise<OrderListResponse> => {
@@ -706,5 +800,34 @@ export const api = {
       throw new Error(errorMsg);
     }
     return res.json();
+  },
+
+  getBlogList: async (params?: { search?: string; category?: string; writer?: string; page?: number }): Promise<BlogListResponse> => {
+    const query = new URLSearchParams();
+    if (params?.search) query.append('search', params.search);
+    if (params?.category) query.append('category', params.category);
+    if (params?.writer) query.append('writer', params.writer);
+    if (params?.page) query.append('page', String(params.page));
+    const qs = query.toString();
+    return apiFetch<BlogListResponse>(`/blog/list${qs ? `?${qs}` : ''}`);
+  },
+
+  getPopularBlogs: async (params?: { search?: string; category?: string; writer?: string; page?: number }): Promise<PopularBlogResponse> => {
+    const query = new URLSearchParams();
+    if (params?.search) query.append('search', params.search);
+    if (params?.category) query.append('category', params.category);
+    if (params?.writer) query.append('writer', params.writer);
+    if (params?.page) query.append('page', String(params.page));
+    const qs = query.toString();
+    return apiFetch<PopularBlogResponse>(`/blog/popular${qs ? `?${qs}` : ''}`);
+  },
+
+  getBlogDetails: async (slug: string, source?: string): Promise<BlogDetailsResponse> => {
+    const qs = source ? `?source=${source}` : '';
+    return apiFetch<BlogDetailsResponse>(`/blog/details/${slug}${qs}`);
+  },
+
+  getBlogCategories: async (): Promise<BlogCategory[]> => {
+    return apiFetch<BlogCategory[]>('/blog/categories');
   },
 };
