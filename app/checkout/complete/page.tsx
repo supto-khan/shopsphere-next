@@ -1,12 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Footer from '@/components/Footer';
 import { CheckCircle, ShoppingBag, Eye, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
-export default function CompletePage() {
+function CompletePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderIds = searchParams.get('order_ids') || '';
@@ -81,5 +81,17 @@ export default function CompletePage() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+export default function CompletePage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full min-h-screen bg-neutral-gray-50 flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-primary-400 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    }>
+      <CompletePageContent />
+    </Suspense>
   );
 }
