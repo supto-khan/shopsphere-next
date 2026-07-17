@@ -1,0 +1,217 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
+import StarRating from '@/components/StarRating';
+import { WishlistSkeleton } from '@/components/profile-skeletons';
+import { Heart, Loader2, Plus, Minus } from 'lucide-react';
+import { useAppStore } from '@/lib/store';
+
+function formatAmount(amount?: number | string): string {
+  const n = Number(amount || 0);
+  return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+export default function WishlistPage() {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const [hoveredId, setHoveredId] = useState<number | null>(null);
+
+  const { cart, addToCart, updateQuantity } = useAppStore();
+
+  const load = async () => {
+    try {
+      const data = await api.getWishlist();
+      setItems(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to load wishlist', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const remove = async (productId: number) => {
+    setBusyId(productId);
+    try {
+      await api.removeFromWishlist(productId);
+      setItems((prev) => prev.filter((it) => it.product_id !== productId));
+    } catch (err) {
+      console.error('Failed to remove from wishlist', err);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center space-x-3 border-b border-neutral-gray-100 pb-4">
+        <div className="w-8 h-8 rounded-xl bg-primary-50 flex items-center justify-center text-primary-600">
+          <Heart size={16} />
+        </div>
+        <h2 className="text-sm font-extrabold text-neutral-gray-900 tracking-tight">My Saved Wishlist</h2>
+      </div>
+
+      {loading ? (
+        <WishlistSkeleton />
+      ) : items.length === 0 ? (
+        <div className="bg-neutral-white border border-neutral-gray-200/50 p-12 text-center shadow-xl shadow-neutral-gray-100/10 flex flex-col items-center justify-center">
+          <div className="w-12 h-12 rounded-2xl bg-primary-50 flex items-center justify-center text-primary-600 mb-4 border border-primary-100">
+            <Heart size={20} />
+          </div>
+          <h2 className="text-sm font-extrabold text-neutral-gray-900 mb-1.5">Your Wishlist is Empty</h2>
+          <p className="text-xs text-neutral-500 mb-6">Looks like you haven't saved any products to your wishlist yet.</p>
+          <a href="/search" className="px-5 py-2.5 bg-primary-600 hover:bg-primary-800 text-neutral-white rounded-xl text-xs font-bold shadow-lg shadow-primary-600/10 transition-all active:scale-[0.98] cursor-pointer hover:-translate-y-0.5">
+            Explore Catalog
+          </a>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-4">
+          {items.map((w) => {
+            const product = w.productFullInfo || {};
+            const rating = Number(product?.rating?.average ?? 0);
+            const reviewCount = Number(product?.reviews_count ?? product?.rating?.count ?? 0);
+            const discount = Number(product?.discount ?? 0);
+            const price = Number(product?.unit_price ?? 0);
+            const discounted = Number(product?.discounted_unit_price ?? price);
+            const productHref = product?.slug ? `/product/${product.slug}` : '#';
+
+            // Resolve thumbnail image
+            let imageSrc = '';
+            const fullUrlObj = (product as any).thumbnail_full_url;
+            if (fullUrlObj?.path && !fullUrlObj.path.includes('def.png')) {
+              const cleanPath = fullUrlObj.path.replace(/^https?:\/\/[^\/]+/, '');
+              imageSrc = cleanPath.replace('storage/app/public', 'storage');
+            } else if (product.thumbnail && !product.thumbnail.includes('def.png')) {
+              imageSrc = `/storage/product/thumbnail/${product.thumbnail}`;
+            } else {
+              imageSrc = '/placeholder.jpg';
+            }
+
+            const cartItem = cart.find((item) => item.product.id === product.id);
+            const qty = cartItem ? cartItem.quantity : 0;
+            const isHovered = hoveredId === w.id;
+
+            return (
+              <div
+                key={w.id}
+                onMouseEnter={() => setHoveredId(w.id)}
+                onMouseLeave={() => setHoveredId(null)}
+                className="bg-neutral-white border border-neutral-gray-200/50 flex flex-col relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-neutral-gray-100/35 hover:-translate-y-1 select-none group shadow-sm"
+              >
+                {/* Image Wrapper */}
+                <div className="w-full aspect-[4/3] relative flex items-center justify-center bg-neutral-gray-55/30 border-b border-neutral-gray-100/60 overflow-hidden">
+                  <a href={productHref} className="w-full h-full flex items-center justify-center">
+                    <img
+                      src={imageSrc}
+                      alt={product.name || 'Product'}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-350 cursor-pointer"
+                    />
+                  </a>
+
+                  {/* Remove Button Overlay */}
+                  <button
+                    onClick={() => remove(w.product_id)}
+                    disabled={busyId === w.product_id}
+                    className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-neutral-white hover:bg-neutral-gray-50 text-red-500 flex items-center justify-center shadow-md cursor-pointer active:scale-95 transition-all z-10 disabled:opacity-50 border border-neutral-gray-150/40"
+                  >
+                    {busyId === w.product_id ? <Loader2 size={12} className="animate-spin" /> : <Heart size={14} className="fill-red-500 text-red-500" />}
+                  </button>
+
+                  {/* Discount tag */}
+                  {discount > 0 && (
+                    <span className="absolute top-2.5 left-2.5 z-10 bg-primary-600 text-neutral-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-xl shadow-sm">
+                      -{discount}%
+                    </span>
+                  )}
+
+                  {/* Quantities Controller overlay */}
+                  <div className="absolute right-3.5 bottom-3.5 z-10">
+                    <div className={`flex items-center rounded-xl shadow-lg border text-[10px] font-extrabold transition-all duration-300 overflow-hidden h-8 ${
+                      qty === 0
+                        ? 'w-8 justify-center bg-primary-600 border-primary-700 text-neutral-white'
+                        : isHovered
+                          ? 'w-24 px-2 justify-between bg-primary-600 border-primary-700 text-neutral-white'
+                          : 'w-8 justify-center bg-secondary-600 border-secondary-700 text-neutral-white'
+                    }`}>
+                      <button
+                        type="button"
+                        onClick={() => qty > 0 && updateQuantity(product.id, qty - 1)}
+                        className={`w-5 h-5 rounded-lg bg-neutral-white/25 hover:bg-neutral-white/40 flex items-center justify-center transition-all duration-300 cursor-pointer shrink-0 ${
+                          qty > 0 && isHovered
+                            ? 'w-5 opacity-100 scale-100'
+                            : 'w-0 opacity-0 pointer-events-none scale-50'
+                        }`}
+                      >
+                        <Minus size={10} className="stroke-[2.5px]" />
+                      </button>
+
+                      <span className={`transition-all duration-300 text-center select-none ${
+                        qty === 0
+                          ? 'w-0 opacity-0 scale-50 overflow-hidden'
+                          : isHovered
+                            ? 'w-8 opacity-100 scale-100'
+                            : 'absolute inset-0 w-8 h-8 flex items-center justify-center opacity-100 scale-110 text-xs font-black'
+                      }`}>
+                        {qty}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (qty === 0) {
+                            addToCart(product);
+                          } else {
+                            updateQuantity(product.id, qty + 1);
+                          }
+                        }}
+                        className={`flex items-center justify-center transition-all cursor-pointer shrink-0 duration-300 ${
+                          qty === 0
+                            ? 'absolute inset-0 w-8 h-8 rounded-xl bg-transparent hover:bg-primary-800 scale-100 opacity-100'
+                            : isHovered
+                              ? 'relative w-5 h-5 rounded-lg bg-neutral-white/25 hover:bg-neutral-white/40 scale-100 opacity-100'
+                              : 'w-0 opacity-0 pointer-events-none scale-50 absolute'
+                        }`}
+                      >
+                        <Plus size={qty === 0 ? 16 : 10} className="stroke-[2.5px]" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Product details */}
+                <div className="p-3 flex flex-col items-center text-center flex-1">
+                  {/* Pricing Row */}
+                  <div className="flex items-baseline space-x-1 mb-1 justify-center">
+                    <span className={`text-xs font-extrabold ${discount > 0 ? 'text-red-600' : 'text-neutral-900'}`}>৳{formatAmount(discounted)}</span>
+                    {discount > 0 && discounted !== price && (
+                      <span className="text-[9px] text-neutral-400 line-through font-bold">৳{formatAmount(price)}</span>
+                    )}
+                  </div>
+
+                  {/* Title */}
+                  <a
+                    href={productHref}
+                    className="text-xs font-bold text-neutral-800 line-clamp-2 hover:text-primary-600 transition-colors leading-relaxed min-h-[36px] px-1 mb-2"
+                  >
+                    {product?.name || 'Product Name'}
+                  </a>
+
+                  <div className="flex items-center justify-center gap-1 mt-auto">
+                    <StarRating rating={rating} />
+                    {reviewCount > 0 && <span className="text-[10px] font-bold text-neutral-400">({reviewCount})</span>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

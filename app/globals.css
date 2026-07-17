@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary-50: #E8F5EF;
+  --color-primary-100: #B8E0CB;
+  --color-primary-200: #7DC4A4;
+  --color-primary-400: #2E9E6B;
+  --color-primary-600: #1A7A4E;
+  --color-primary-800: #0D5534;
+  --color-primary-900: #073822;
+
+  --color-secondary-50: #E0F7F2;
+  --color-secondary-200: #8DE8D4;
+  --color-secondary-400: #34C9AC;
+  --color-secondary-600: #0E9F84;
+  --color-secondary-800: #066B58;
+
+  --color-accent-50: #FEF9E7;
+  --color-accent-200: #FCD96A;
+  --color-accent-500: #F0A500;
+  --color-accent-700: #B87600;
+
+  --color-neutral-white: #FAFAF9;
+  --color-neutral-gray-50: #F0F0EB;
+  --color-neutral-gray-200: #D4D4CE;
+  --color-neutral-gray-600: #6B6B66;
+  --color-neutral-gray-900: #1C1C1A;
+
+  --color-success: #D1FAE5;
+  --color-warning: #FEF3C7;
+  --color-danger: #FEE2E2;
+  --color-info: #EFF6FF;
+}
+
+body {
+  background-color: var(--color-neutral-white);
+  color: var(--color-neutral-gray-900);
+  font-family: var(--font-lexend), ui-sans-serif, system-ui, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-neutral-gray-200);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neutral-gray-600);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slideOutRight {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes number-bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.3) translateY(-1px); }
+}
+
+.animate-slide-in {
+  animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-out {
+  animation: slideOutRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+.animate-number-bounce {
+  animation: number-bounce 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-up {
+  animation: scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.animate-fade-out {
+  animation: fadeOut 0.2s ease-in forwards;
+}
+
+@keyframes scaleDown {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+.animate-scale-down {
+  animation: scaleDown 0.25s ease-in forwards;
+}
+
