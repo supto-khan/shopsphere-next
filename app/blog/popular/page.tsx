@@ -337,6 +337,8 @@ function PopularBlogList() {
                   Next &rarr;
                 </button>
               </div>
+            )}
+          </div>
         )}
       </div>
       <Footer />
