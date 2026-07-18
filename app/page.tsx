@@ -3,7 +3,9 @@ import { api, Category, Product, Brand } from '@/lib/api';
 import StorefrontClient from '@/components/StorefrontClient';
 import StorefrontSkeleton from '@/components/StorefrontSkeleton';
 
-export const dynamic = 'force-dynamic';
+// Enable SSG (Static Site Generation) and ISR (Incremental Static Regeneration)
+// Revalidate the page in the background at most every 60 seconds.
+export const revalidate = 60;
 
 async function StorefrontServerContent() {
   // ── Step 1: Pre-fetch all storefront data on the Server in parallel ─────

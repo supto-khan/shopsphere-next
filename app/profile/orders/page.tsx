@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api, Order } from '@/lib/api';
-import { Loader2, ShoppingBag, MoreVertical, FileText, Download } from 'lucide-react';
+import { Loader2, ShoppingBag, FileText, Download } from 'lucide-react';
 import { ProductThumb, formatAmount, formatOrderDate, orderStatusClasses } from '@/lib/profile-utils';
 import { OrdersListSkeleton } from '@/components/profile-skeletons';
 
@@ -11,7 +11,6 @@ export default function OrdersListPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -30,7 +29,6 @@ export default function OrdersListPage() {
   }, []);
 
   const downloadInvoice = async (orderId: number) => {
-    setDropdownOpen(null);
     try {
       const bytes = await api.getOrderInvoice(orderId);
       const blob = new Blob([new Uint8Array(bytes)], { type: 'application/pdf' });
@@ -49,7 +47,6 @@ export default function OrdersListPage() {
   };
 
   const viewDetails = (orderId: number) => {
-    setDropdownOpen(null);
     router.push(`/profile/orders/${orderId}`);
   };
 
@@ -95,31 +92,23 @@ export default function OrdersListPage() {
                   <div className="text-left sm:text-right pr-2">
                     <p className="font-extrabold text-neutral-gray-900 text-sm tracking-tight">{formatAmount(order.order_amount)}</p>
                   </div>
-                  <button 
-                    onClick={() => setDropdownOpen(dropdownOpen === order.id ? null : order.id)} 
-                    className="p-2 rounded-xl hover:bg-neutral-gray-50 active:scale-95 transition-all cursor-pointer border border-transparent hover:border-neutral-gray-200/60"
-                  >
-                    <MoreVertical size={16} className="text-neutral-gray-600" />
-                  </button>
-                </div>
-                {dropdownOpen === order.id && (
-                  <div className="absolute right-5 top-16 w-48 bg-neutral-white border border-neutral-gray-200/60 rounded-2xl shadow-2xl z-50 py-1.5 overflow-hidden animate-fade-in">
+                  <div className="flex items-center gap-1.5">
                     <button 
                       onClick={() => viewDetails(order.id)} 
-                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-neutral-gray-700 hover:bg-primary-50/50 hover:text-primary-600 flex items-center gap-2 cursor-pointer transition-colors"
+                      title="View Details"
+                      className="p-2 rounded-xl text-neutral-gray-600 hover:text-primary-600 hover:bg-primary-50/50 border border-neutral-gray-150 hover:border-primary-200/50 active:scale-95 transition-all cursor-pointer"
                     >
-                      <FileText size={14} className="text-neutral-gray-500" />
-                      <span>View details</span>
+                      <FileText size={16} />
                     </button>
                     <button 
                       onClick={() => downloadInvoice(order.id)} 
-                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-neutral-gray-700 hover:bg-primary-50/50 hover:text-primary-600 border-t border-neutral-gray-100 flex items-center gap-2 cursor-pointer transition-colors"
+                      title="Download Invoice"
+                      className="p-2 rounded-xl text-neutral-gray-600 hover:text-primary-600 hover:bg-primary-50/50 border border-neutral-gray-150 hover:border-primary-200/50 active:scale-95 transition-all cursor-pointer"
                     >
-                      <Download size={14} className="text-neutral-gray-500" />
-                      <span>Download invoice</span>
+                      <Download size={16} />
                     </button>
                   </div>
-                )}
+                </div>
               </div>
             );
           })}

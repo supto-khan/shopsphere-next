@@ -117,25 +117,8 @@ let _guestIdInflight: Promise<string | null> | null = null;
 // Helper to get or retrieve guest ID
 async function getGuestId(): Promise<string | null> {
   if (typeof window === 'undefined') {
-    try {
-      const { cookies } = await import('next/headers');
-      const cookieStore = await cookies();
-      const guestCookie = cookieStore.get('shopsphere_guest_id')?.value;
-      if (guestCookie) return guestCookie;
-
-      // If no cookie, fetch a guest_id from backend
-      const res = await fetch(`${BACKEND_URL}/api/v1/get-guest-id`, {
-        headers: { 'Accept': 'application/json' },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.guest_id) {
-          return String(data.guest_id);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to get guest ID on server', err);
-    }
+    // Return null on the server to prevent Next.js from opting out of static generation (SSG/ISR).
+    // The client-side will retrieve/generate the guest ID and send it in subsequent API requests.
     return null;
   }
 
