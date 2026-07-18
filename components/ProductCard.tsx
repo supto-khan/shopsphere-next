@@ -6,12 +6,14 @@ import { Product } from '@/lib/api';
 import { useAppStore } from '@/lib/store';
 import { Plus, Minus } from 'lucide-react';
 import { resolveImage } from '@/lib/image';
+import Image from 'next/image';
 
 interface ProductCardProps {
   product: Product;
+  priority?: boolean;
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
+export default function ProductCard({ product, priority = false }: ProductCardProps) {
   const router = useRouter();
   const { cart, addToCart, updateQuantity } = useAppStore();
   const [isHovered, setIsHovered] = useState(false);
@@ -28,7 +30,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const price = product.unit_price;
   const discount = product.discount || 0;
   const hasDiscount = discount > 0;
-  const finalPrice = product.discount_type === 'amount'
+  const finalPrice = product.discount_type === 'amount' || product.discount_type === 'flat'
     ? Math.max(0, price - discount)
     : Math.max(0, price - (price * discount) / 100);
 
@@ -58,14 +60,14 @@ export default function ProductCard({ product }: ProductCardProps) {
         )}
 
         {imageSrc ? (
-          <img
+          <Image
             src={imageSrc}
             alt={product.name || 'Product'}
             onClick={goToDetail}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-350 cursor-pointer"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = '';
-            }}
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 16vw"
+            priority={priority}
+            className="object-cover group-hover:scale-105 transition-transform duration-350 cursor-pointer"
           />
         ) : (
           <div

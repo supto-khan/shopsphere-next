@@ -1,10 +1,9 @@
-'use client';
-
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { resolveImage } from '@/lib/image';
+import Image from 'next/image';
 
 interface Banner {
   id: number;
@@ -31,13 +30,22 @@ interface Banner {
   };
 }
 
-export default function HeroSlider() {
+interface HeroSliderProps {
+  initialBanners?: Banner[];
+}
+
+export default function HeroSlider({ initialBanners }: HeroSliderProps) {
   const router = useRouter();
   const [current, setCurrent] = useState(0);
-  const [banners, setBanners] = useState<Banner[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [banners, setBanners] = useState<Banner[]>(initialBanners || []);
+  const [loading, setLoading] = useState(!initialBanners);
 
   useEffect(() => {
+    if (initialBanners) {
+      setBanners(initialBanners);
+      setLoading(false);
+      return;
+    }
     let active = true;
     api.getBanners()
       .then((data) => {
@@ -56,7 +64,7 @@ export default function HeroSlider() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [initialBanners]);
 
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
@@ -135,21 +143,21 @@ export default function HeroSlider() {
 
   if (loading) {
     return (
-      <div className="w-full rounded-2xl animate-pulse h-[350px] md:h-[450px] min-h-[350px] bg-neutral-gray-50 border border-neutral-gray-200/50 relative overflow-hidden flex flex-col justify-between p-8 md:p-12">
+      <div className="w-full rounded-2xl animate-pulse h-[350px] md:h-[450px] min-h-[350px] bg-neutral-gray-55/20 border border-neutral-gray-200/50 relative overflow-hidden flex flex-col justify-between p-8 md:p-12">
         {/* Skeleton Banner Title & Subtitle blocks */}
         <div className="space-y-4 max-w-md mt-6">
-          <div className="h-8 md:h-10 bg-neutral-gray-200/80 rounded-lg w-3/4" />
-          <div className="h-4 md:h-5 bg-neutral-gray-200/70 rounded-lg w-1/2" />
+          <div className="h-8 md:h-10 bg-neutral-gray-55/40 rounded-lg w-3/4" />
+          <div className="h-4 md:h-5 bg-neutral-gray-55/30 rounded-lg w-1/2" />
         </div>
         
         {/* Skeleton Action Button */}
-        <div className="h-10 md:h-12 bg-neutral-gray-200/80 rounded-xl w-36 mt-4" />
+        <div className="h-10 md:h-12 bg-neutral-gray-55/40 rounded-xl w-36 mt-4" />
 
         {/* Skeleton Slide Indicators */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-          <div className="w-5 h-1.5 rounded-full bg-neutral-gray-200/80" />
-          <div className="w-1.5 h-1.5 rounded-full bg-neutral-gray-200/60" />
-          <div className="w-1.5 h-1.5 rounded-full bg-neutral-gray-200/60" />
+          <div className="w-5 h-1.5 rounded-full bg-neutral-gray-55/40" />
+          <div className="w-1.5 h-1.5 rounded-full bg-neutral-gray-55/30" />
+          <div className="w-1.5 h-1.5 rounded-full bg-neutral-gray-55/30" />
         </div>
       </div>
     );
@@ -176,20 +184,28 @@ export default function HeroSlider() {
         >
           {banners.map((banner, index) => {
             const imageSrc = toProxyUrl(banner.photo_full_url?.path);
+            const isActive = index === current;
             return (
               <div
                 key={banner.id}
                 onClick={() => handleBannerClick(banner)}
                 className={`absolute inset-0 w-full h-full transition-opacity duration-700 ease-in-out ${
-                  index === current ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
+                  isActive ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
                 }`}
               >
-                <img
-                  src={imageSrc}
-                  alt="Banner promotion"
-                  className="w-full h-full object-cover select-none"
-                  draggable="false"
-                />
+                {imageSrc && (
+                  <Image
+                    src={imageSrc}
+                    alt="Banner promotion"
+                    fill
+                    sizes="(max-width: 1200px) 100vw, 1200px"
+                    className="object-cover select-none"
+                    draggable="false"
+                    priority={isActive}
+                    // LCP Optimizations: eager load active first slide
+                    loading={isActive ? undefined : "lazy"}
+                  />
+                )}
               </div>
             );
           })}

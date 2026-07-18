@@ -31,7 +31,7 @@ function toProxyUrl(url?: any): string {
 
 export default function VendorsPage() {
   const router = useRouter();
-  const { setSelectedCategory, setSearchQuery } = useAppStore();
+  const { setSelectedCategory, setSearchQuery, categories: storeCategories, categoriesLoaded, setCategories: setStoreCategories } = useAppStore();
 
   // Sellers and metadata state
   const [sellers, setSellers] = useState<any[]>([]);
@@ -39,8 +39,8 @@ export default function VendorsPage() {
   const [loading, setLoading] = useState(true);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categories, setCategories] = useState<Category[]>(storeCategories);
+  const [categoriesLoading, setCategoriesLoading] = useState(!categoriesLoaded);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [brandsLoading, setBrandsLoading] = useState(true);
 
@@ -77,19 +77,32 @@ export default function VendorsPage() {
 
   // Fetch initial metadata
   useEffect(() => {
-    api.getCategories()
+    let active = true;
+
+    const fetchCats = categoriesLoaded
+      ? Promise.resolve(storeCategories)
+      : api.getCategories().then((data) => { setStoreCategories(data); return data; });
+
+    fetchCats
       .then((data) => {
-        setCategories(data);
-        setCategoriesLoading(false);
+        if (active) {
+          setCategories(data);
+          setCategoriesLoading(false);
+        }
       })
-      .catch(() => setCategoriesLoading(false));
+      .catch(() => { if (active) setCategoriesLoading(false); });
 
     api.getBrands()
       .then((data) => {
-        setBrands(data);
-        setBrandsLoading(false);
+        if (active) {
+          setBrands(data);
+          setBrandsLoading(false);
+        }
       })
-      .catch(() => setBrandsLoading(false));
+      .catch(() => { if (active) setBrandsLoading(false); });
+
+    return () => { active = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch sellers when filters change

@@ -26,7 +26,9 @@ export default function Header() {
     companyFavIcon,
     setCompanyConfig,
     setCustomerLogin,
-    toggleSidebar
+    toggleSidebar,
+    setSiteConfig,
+    configLoaded,
   } = useAppStore();
 
   useEffect(() => {
@@ -93,7 +95,7 @@ export default function Header() {
       } finally {
         setLoading(false);
       }
-    }, 100);
+    }, 350);
 
     return () => clearTimeout(delay);
   }, [inputVal]);
@@ -115,12 +117,17 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fetch company logo, favicon, and active languages settings from Laravel backend
+  // Fetch company logo, favicon, and active languages settings from Laravel backend.
+  // The full config response is also saved to the Zustand store so every other
+  // component (Footer, CartDrawer, Sidebar, etc.) can read it without an API call.
   useEffect(() => {
     async function loadConfig() {
       try {
         const config = await api.getConfig();
         if (config) {
+          // ── Save full config to global store ──────────────────────────────
+          setSiteConfig(config);
+
           let logoUrl = null;
           let favIconUrl = null;
 
@@ -158,8 +165,9 @@ export default function Header() {
         console.error('Failed to load system config', err);
       }
     }
-    loadConfig();
-  }, [setCompanyConfig, setCustomerLogin]);
+    // Only fetch if not already in store (avoids re-fetch on SPA navigation)
+    if (!configLoaded) loadConfig();
+  }, [setSiteConfig, setCompanyConfig, setCustomerLogin, configLoaded]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();

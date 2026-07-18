@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useAppStore } from '@/lib/store';
 import { api } from '@/lib/api';
 import { X, Phone, Mail } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
@@ -39,8 +40,25 @@ const SOCIAL_LABELS: Record<string, string> = {
 };
 
 export default function LoginModal() {
-  const { isLoginOpen, setLoginOpen, setLoggedIn, customerLogin } = useAppStore();
+  const { isLoginOpen, setLoginOpen, setLoggedIn, customerLogin, siteConfig } = useAppStore();
   const { login, checkPhone, verifyOTP } = api;
+  const router = useRouter();
+
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [signupForm, setSignupForm] = useState({
+    f_name: '',
+    l_name: '',
+    email: '',
+    phone: '',
+    password: '',
+    con_password: '',
+    referral_code: '',
+    agreeTerms: false,
+  });
+
+  const [verificationMode, setVerificationMode] = useState<'phone' | 'email' | null>(null);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [tempToken, setTempToken] = useState('');
 
   const [method, setMethod] = useState<'otp' | 'email'>('otp');
   const [inputValue, setInputValue] = useState('');
@@ -77,11 +95,40 @@ export default function LoginModal() {
     setCodeMode(false);
     setOtp('');
     setError(null);
+    setIsSignUp(false);
+    setSignupForm({
+      f_name: '',
+      l_name: '',
+      email: '',
+      phone: '',
+      password: '',
+      con_password: '',
+      referral_code: '',
+      agreeTerms: false,
+    });
+    setVerificationMode(null);
+    setVerificationCode('');
+    setTempToken('');
   };
 
   const closeModal = () => {
     setLoginOpen(false);
     resetState();
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/checkout')) {
+      router.push('/');
+    }
+  };
+
+  const handleLoginSuccess = (token: string) => {
+    setLoggedIn(token);
+    resetState();
+    if (typeof window !== 'undefined') {
+      const redirectPath = localStorage.getItem('post_login_redirect');
+      if (redirectPath) {
+        localStorage.removeItem('post_login_redirect');
+        router.push(redirectPath);
+      }
+    }
   };
 
   const handleSendCode = async (e: React.FormEvent) => {
@@ -111,8 +158,7 @@ export default function LoginModal() {
     try {
       const res = await verifyOTP(inputValue, otp);
       if (res.token) {
-        setLoggedIn(res.token);
-        resetState();
+        handleLoginSuccess(res.token);
       } else if (res.errors) {
         setError(res.errors[0]?.message ?? 'Invalid OTP');
       } else {
@@ -133,8 +179,7 @@ export default function LoginModal() {
     try {
       const res = await login(inputValue, password, 'email');
       if (res.token) {
-        setLoggedIn(res.token);
-        resetState();
+        handleLoginSuccess(res.token);
       } else if (res.errors) {
         setError(res.errors[0]?.message ?? 'Login failed');
       } else {
@@ -142,6 +187,95 @@ export default function LoginModal() {
       }
     } catch {
       setError('Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignUpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!signupForm.agreeTerms) {
+      setError('You must agree to the Terms and Conditions.');
+      return;
+    }
+    if (signupForm.password !== signupForm.con_password) {
+      setError('Passwords do not match.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.registerCustomer({
+        f_name: signupForm.f_name,
+        l_name: signupForm.l_name,
+        email: signupForm.email,
+        phone: signupForm.phone,
+        password: signupForm.password,
+        referral_code: signupForm.referral_code,
+      });
+
+      if (res.token) {
+        handleLoginSuccess(res.token);
+      } else if (res.temporary_token) {
+        setTempToken(res.temporary_token);
+        const phoneVerify = siteConfig?.phone_verification || Number(siteConfig?.phone_verification) === 1;
+        const emailVerify = siteConfig?.email_verification || Number(siteConfig?.email_verification) === 1;
+        if (phoneVerify) {
+          setVerificationMode('phone');
+          try {
+            await api.checkPhone(signupForm.phone);
+          } catch (err) {
+            console.error('Failed to trigger phone verification OTP', err);
+          }
+        } else if (emailVerify) {
+          setVerificationMode('email');
+          try {
+            await api.checkEmail(signupForm.email);
+          } catch (err) {
+            console.error('Failed to trigger email verification OTP', err);
+          }
+        } else {
+          setVerificationMode('phone');
+          try {
+            await api.checkPhone(signupForm.phone);
+          } catch (err) {
+            console.error('Failed to trigger phone verification OTP', err);
+          }
+        }
+      } else if (res.errors) {
+        setError(res.errors[0]?.message ?? 'Registration failed.');
+      } else {
+        setError('Registration failed. Please try again.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerificationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!verificationCode) return;
+    setLoading(true);
+    setError(null);
+    try {
+      let res;
+      if (verificationMode === 'phone') {
+        res = await api.verifyPhone(signupForm.phone, verificationCode);
+      } else {
+        res = await api.verifyEmail(signupForm.email, verificationCode);
+      }
+
+      if (res.token) {
+        handleLoginSuccess(res.token);
+      } else if (res.errors) {
+        setError(res.errors[0]?.message ?? 'Verification failed.');
+      } else {
+        setError('Verification failed. Please check the code and try again.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Verification failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -171,19 +305,24 @@ export default function LoginModal() {
     );
   }
 
-  const title =
-    activeMethod === 'otp'
-      ? codeMode
-        ? 'Verify OTP Code'
-        : 'Login with Phone'
-      : 'Login with Email';
+  const title = verificationMode
+    ? `Verify ${verificationMode === 'phone' ? 'Phone' : 'Email'}`
+    : isSignUp
+    ? 'Create an Account'
+    : activeMethod === 'otp'
+    ? codeMode
+      ? 'Verify OTP Code'
+      : 'Login with Phone'
+    : 'Login with Email';
+
+  const showReferral = siteConfig?.ref_earning_status === 1 || Number(siteConfig?.ref_earning_status) === 1;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-gray-900/50 backdrop-blur-sm animate-fade-in">
       <div className="relative w-full max-w-md bg-neutral-white rounded-xl shadow-2xl overflow-hidden border border-neutral-gray-200">
         <div className="flex justify-between items-center px-6 py-4 border-b border-neutral-gray-50 bg-neutral-gray-50/50">
           <h3 className="text-lg font-semibold text-neutral-gray-900">
-            {hasStandard ? title : 'Login / Register'}
+            {title}
           </h3>
           <button
             onClick={closeModal}
@@ -193,174 +332,329 @@ export default function LoginModal() {
           </button>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
           {error && (
             <div className="flex items-start space-x-3 bg-danger/10 text-red-600 p-3 rounded-lg border border-danger/20 text-sm">
               <span>{error}</span>
             </div>
           )}
 
-          {hasStandard && (
-            <>
-              {standardMethods.length > 1 && (
-                <div className="flex justify-center space-x-4 border-b border-neutral-gray-50 pb-3">
-                  {otpEnabled && (
-                    <button
-                      type="button"
-                      onClick={() => { setMethod('otp'); setCodeMode(false); }}
-                      className={`flex items-center space-x-2 pb-2 px-4 border-b-2 transition-all ${
-                        activeMethod === 'otp'
-                          ? 'border-primary-600 text-primary-600 font-medium'
-                          : 'border-transparent text-neutral-gray-600 hover:text-neutral-gray-900'
-                      }`}
-                    >
-                      <Phone size={16} />
-                      <span>Phone</span>
-                    </button>
-                  )}
-                  {emailEnabled && (
-                    <button
-                      type="button"
-                      onClick={() => setMethod('email')}
-                      className={`flex items-center space-x-2 pb-2 px-4 border-b-2 transition-all ${
-                        activeMethod === 'email'
-                          ? 'border-primary-600 text-primary-600 font-medium'
-                          : 'border-transparent text-neutral-gray-600 hover:text-neutral-gray-900'
-                      }`}
-                    >
-                      <Mail size={16} />
-                      <span>Email</span>
-                    </button>
-                  )}
+          {verificationMode ? (
+            <form onSubmit={handleVerificationSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-gray-600 mb-1">
+                  Enter code sent to your {verificationMode === 'phone' ? 'Phone' : 'Email'}
+                </label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  required
+                  placeholder="Enter Verification Code"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  className="w-full px-4 py-3 text-center tracking-widest text-lg font-bold rounded-lg border border-neutral-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:border-primary-600 transition-all text-neutral-gray-900 bg-neutral-white"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 bg-primary-600 hover:bg-primary-800 text-neutral-white font-medium rounded-lg shadow-lg shadow-primary-600/10 active:scale-[0.98] transition-all disabled:opacity-60"
+              >
+                {loading ? 'Verifying...' : 'Verify Code'}
+              </button>
+            </form>
+          ) : isSignUp ? (
+            <form onSubmit={handleSignUpSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-gray-600 mb-1">First Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. John"
+                    value={signupForm.f_name}
+                    onChange={(e) => setSignupForm({ ...signupForm, f_name: e.target.value })}
+                    className="w-full px-4 py-2.5 text-xs rounded-lg border border-neutral-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:border-primary-600 text-neutral-gray-900 bg-neutral-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-gray-600 mb-1">Last Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Doe"
+                    value={signupForm.l_name}
+                    onChange={(e) => setSignupForm({ ...signupForm, l_name: e.target.value })}
+                    className="w-full px-4 py-2.5 text-xs rounded-lg border border-neutral-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:border-primary-600 text-neutral-gray-900 bg-neutral-white"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-neutral-gray-600 mb-1">Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="e.g. john@example.com"
+                  value={signupForm.email}
+                  onChange={(e) => setSignupForm({ ...signupForm, email: e.target.value })}
+                  className="w-full px-4 py-2.5 text-xs rounded-lg border border-neutral-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:border-primary-600 text-neutral-gray-900 bg-neutral-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-neutral-gray-600 mb-1">Phone Number *</label>
+                <input
+                  type="tel"
+                  required
+                  placeholder="e.g. +8801700000000"
+                  value={signupForm.phone}
+                  onChange={(e) => setSignupForm({ ...signupForm, phone: e.target.value })}
+                  className="w-full px-4 py-2.5 text-xs rounded-lg border border-neutral-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:border-primary-600 text-neutral-gray-900 bg-neutral-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-neutral-gray-600 mb-1">Password *</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Minimum 6 characters"
+                  value={signupForm.password}
+                  onChange={(e) => setSignupForm({ ...signupForm, password: e.target.value })}
+                  className="w-full px-4 py-2.5 text-xs rounded-lg border border-neutral-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:border-primary-600 text-neutral-gray-900 bg-neutral-white"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-neutral-gray-600 mb-1">Confirm Password *</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Re-enter password"
+                  value={signupForm.con_password}
+                  onChange={(e) => setSignupForm({ ...signupForm, con_password: e.target.value })}
+                  className="w-full px-4 py-2.5 text-xs rounded-lg border border-neutral-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:border-primary-600 text-neutral-gray-900 bg-neutral-white"
+                />
+              </div>
+
+              {showReferral && (
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-gray-600 mb-1">Referral Code (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="Enter referral code"
+                    value={signupForm.referral_code}
+                    onChange={(e) => setSignupForm({ ...signupForm, referral_code: e.target.value })}
+                    className="w-full px-4 py-2.5 text-xs rounded-lg border border-neutral-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:border-primary-600 text-neutral-gray-900 bg-neutral-white"
+                  />
                 </div>
               )}
 
-              {activeMethod === 'otp' ? (
-                codeMode ? (
-                  <form onSubmit={handleVerifyOtp} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-gray-600 mb-1">
-                        Verification Code
-                      </label>
-                      <input
-                        type="text"
-                        maxLength={6}
-                        required
-                        placeholder="Enter OTP"
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value)}
-                        className="w-full px-4 py-3 text-center tracking-widest text-lg font-bold rounded-lg border border-neutral-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:border-primary-600 transition-all text-neutral-gray-900 bg-neutral-white"
-                      />
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="agreeTerms"
+                  checked={signupForm.agreeTerms}
+                  onChange={(e) => setSignupForm({ ...signupForm, agreeTerms: e.target.checked })}
+                  className="w-4 h-4 text-primary-600 border-neutral-gray-300 rounded focus:ring-primary-600"
+                />
+                <label htmlFor="agreeTerms" className="text-xs text-neutral-gray-600 font-semibold cursor-pointer">
+                  I agree to the Terms and Conditions
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 bg-primary-600 hover:bg-primary-800 text-neutral-white font-medium rounded-lg shadow-lg shadow-primary-600/10 active:scale-[0.98] transition-all disabled:opacity-60"
+              >
+                {loading ? 'Creating Account...' : 'Sign Up'}
+              </button>
+
+              <div className="text-center text-xs text-neutral-gray-600">
+                Already have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => setIsSignUp(false)}
+                  className="text-primary-600 hover:text-primary-800 font-bold border-b border-dashed border-primary-600 hover:border-primary-800 cursor-pointer"
+                >
+                  Sign In
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              {hasStandard && (
+                <>
+                  {standardMethods.length > 1 && (
+                    <div className="flex justify-center space-x-4 border-b border-neutral-gray-50 pb-3">
+                      {otpEnabled && (
+                        <button
+                          type="button"
+                          onClick={() => { setMethod('otp'); setCodeMode(false); }}
+                          className={`flex items-center space-x-2 pb-2 px-4 border-b-2 transition-all ${
+                            activeMethod === 'otp'
+                              ? 'border-primary-600 text-primary-600 font-medium'
+                              : 'border-transparent text-neutral-gray-600 hover:text-neutral-gray-900'
+                          }`}
+                        >
+                          <Phone size={16} />
+                          <span>Phone</span>
+                        </button>
+                      )}
+                      {emailEnabled && (
+                        <button
+                          type="button"
+                          onClick={() => setMethod('email')}
+                          className={`flex items-center space-x-2 pb-2 px-4 border-b-2 transition-all ${
+                            activeMethod === 'email'
+                              ? 'border-primary-600 text-primary-600 font-medium'
+                              : 'border-transparent text-neutral-gray-600 hover:text-neutral-gray-900'
+                          }`}
+                        >
+                          <Mail size={16} />
+                          <span>Email</span>
+                        </button>
+                      )}
                     </div>
-                    <div className="flex space-x-3">
-                      <button
-                        type="button"
-                        onClick={() => setCodeMode(false)}
-                        disabled={loading}
-                        className="flex-1 py-3 bg-neutral-gray-50 hover:bg-neutral-gray-200 text-neutral-gray-900 font-medium rounded-lg transition-all disabled:opacity-60"
-                      >
-                        Back
-                      </button>
+                  )}
+
+                  {activeMethod === 'otp' ? (
+                    codeMode ? (
+                      <form onSubmit={handleVerifyOtp} className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-gray-600 mb-1">
+                            Verification Code
+                          </label>
+                          <input
+                            type="text"
+                            maxLength={6}
+                            required
+                            placeholder="Enter OTP"
+                            value={otp}
+                            onChange={(e) => setOtp(e.target.value)}
+                            className="w-full px-4 py-3 text-center tracking-widest text-lg font-bold rounded-lg border border-neutral-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:border-primary-600 transition-all text-neutral-gray-900 bg-neutral-white"
+                          />
+                        </div>
+                        <div className="flex space-x-3">
+                          <button
+                            type="button"
+                            onClick={() => setCodeMode(false)}
+                            disabled={loading}
+                            className="flex-1 py-3 bg-neutral-gray-50 hover:bg-neutral-gray-200 text-neutral-gray-900 font-medium rounded-lg transition-all disabled:opacity-60"
+                          >
+                            Back
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={loading}
+                            className="flex-1 py-3 bg-primary-600 hover:bg-primary-800 text-neutral-white font-medium rounded-lg shadow-lg shadow-primary-600/10 active:scale-[0.98] transition-all disabled:opacity-60"
+                          >
+                            {loading ? 'Verifying...' : 'Verify'}
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <form onSubmit={handleSendCode} className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-gray-600 mb-1">
+                            Phone Number
+                          </label>
+                          <input
+                            type="tel"
+                            required
+                            placeholder="e.g. +8801700000000"
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            className="w-full px-4 py-3 rounded-lg border border-neutral-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:border-primary-600 transition-all text-neutral-gray-900 bg-neutral-white"
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          disabled={loading}
+                          className="w-full py-3 bg-primary-600 hover:bg-primary-800 text-neutral-white font-medium rounded-lg shadow-lg shadow-primary-600/10 active:scale-[0.98] transition-all disabled:opacity-60"
+                        >
+                          {loading ? 'Sending...' : 'Send Code'}
+                        </button>
+                      </form>
+                    )
+                  ) : (
+                    <form onSubmit={handleEmailLogin} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-gray-600 mb-1">
+                          Email Address
+                        </label>
+                        <input
+                          type="email"
+                          required
+                          placeholder="e.g. user@example.com"
+                          value={inputValue}
+                          onChange={(e) => setInputValue(e.target.value)}
+                          className="w-full px-4 py-3 rounded-lg border border-neutral-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:border-primary-600 transition-all text-neutral-gray-900 bg-neutral-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-gray-600 mb-1">
+                          Password
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          placeholder="Enter your password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="w-full px-4 py-3 rounded-lg border border-neutral-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:border-primary-600 transition-all text-neutral-gray-900 bg-neutral-white"
+                        />
+                      </div>
                       <button
                         type="submit"
                         disabled={loading}
-                        className="flex-1 py-3 bg-primary-600 hover:bg-primary-800 text-neutral-white font-medium rounded-lg shadow-lg shadow-primary-600/10 active:scale-[0.98] transition-all disabled:opacity-60"
+                        className="w-full py-3 bg-primary-600 hover:bg-primary-800 text-neutral-white font-medium rounded-lg shadow-lg shadow-primary-600/10 active:scale-[0.98] transition-all disabled:opacity-60"
                       >
-                        {loading ? 'Verifying...' : 'Verify'}
+                        {loading ? 'Signing in...' : 'Login'}
                       </button>
-                    </div>
-                  </form>
-                ) : (
-                  <form onSubmit={handleSendCode} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-gray-600 mb-1">
-                        Phone Number
-                      </label>
-                      <input
-                        type="tel"
-                        required
-                        placeholder="e.g. +8801700000000"
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg border border-neutral-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:border-primary-600 transition-all text-neutral-gray-900 bg-neutral-white"
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full py-3 bg-primary-600 hover:bg-primary-800 text-neutral-white font-medium rounded-lg shadow-lg shadow-primary-600/10 active:scale-[0.98] transition-all disabled:opacity-60"
-                    >
-                      {loading ? 'Sending...' : 'Send Code'}
-                    </button>
-                  </form>
-                )
-              ) : (
-                  <form onSubmit={handleEmailLogin} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-gray-600 mb-1">
-                        Email Address
-                      </label>
-                      <input
-                        type="email"
-                        required
-                        placeholder="e.g. user@example.com"
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg border border-neutral-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:border-primary-600 transition-all text-neutral-gray-900 bg-neutral-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold uppercase tracking-wider text-neutral-gray-600 mb-1">
-                        Password
-                      </label>
-                      <input
-                        type="password"
-                        required
-                        placeholder="Enter your password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg border border-neutral-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-600/20 focus:border-primary-600 transition-all text-neutral-gray-900 bg-neutral-white"
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full py-3 bg-primary-600 hover:bg-primary-800 text-neutral-white font-medium rounded-lg shadow-lg shadow-primary-600/10 active:scale-[0.98] transition-all disabled:opacity-60"
-                    >
-                      {loading ? 'Signing in...' : 'Login'}
-                    </button>
-                  </form>
+                    </form>
+                  )}
+                </>
               )}
-            </>
-          )}
 
-          {hasSocial && (
-            <>
-              <div className="flex items-center space-x-3">
-                <div className="flex-1 h-px bg-neutral-gray-200" />
-                <span className="text-xs font-semibold uppercase tracking-wider text-neutral-gray-600">
-                  or continue with
-                </span>
-                <div className="flex-1 h-px bg-neutral-gray-200" />
+              <div className="text-center text-xs text-neutral-gray-600 mt-4">
+                Don't have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => setIsSignUp(true)}
+                  className="text-primary-600 hover:text-primary-800 font-bold border-b border-dashed border-primary-600 hover:border-primary-800 cursor-pointer animate-pulse"
+                >
+                  Sign Up
+                </button>
               </div>
 
-              <div className="space-y-3">
-                {socialMethods.map((provider) => {
-                  const Icon = SOCIAL_ICONS[provider] ?? Mail;
-                  const label = SOCIAL_LABELS[provider] ?? provider;
-                  return (
-                    <button
-                      key={provider}
-                      type="button"
-                      onClick={handleSocialLogin}
-                      className="w-full flex items-center justify-center space-x-3 py-3 border border-neutral-gray-200 rounded-lg text-neutral-gray-900 font-medium hover:bg-neutral-gray-50 transition-all"
-                    >
-                      <Icon />
-                      <span>Continue with {label}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              {hasSocial && (
+                <>
+                  <div className="flex items-center space-x-3 pt-2">
+                    <div className="flex-1 h-px bg-neutral-gray-200" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-neutral-gray-600">
+                      or continue with
+                    </span>
+                    <div className="flex-1 h-px bg-neutral-gray-200" />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3">
+                    {socialMethods.map((provider) => {
+                      const Icon = SOCIAL_ICONS[provider] ?? Mail;
+                      const label = SOCIAL_LABELS[provider] ?? provider;
+                      return (
+                        <button
+                          key={provider}
+                          type="button"
+                          onClick={handleSocialLogin}
+                          className="w-full flex items-center justify-center space-x-3 py-2.5 border border-neutral-gray-200 rounded-lg text-neutral-gray-900 font-medium hover:bg-neutral-gray-50 transition-all text-xs"
+                        >
+                          <Icon />
+                          <span>Continue with {label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>

@@ -1,21 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { api, BACKEND_URL } from '@/lib/api';
+import React from 'react';
+import { useAppStore } from '@/lib/store';
 import { resolveImage } from '@/lib/image';
 
 export default function CompanyReliability() {
-  const [reliability, setReliability] = useState<any[]>([]);
-
-  useEffect(() => {
-    api.getConfig()
-      .then((config) => {
-        if (config?.company_reliability && Array.isArray(config.company_reliability)) {
-          setReliability(config.company_reliability.filter((r: any) => r?.status === 1 && r?.title));
-        }
-      })
-      .catch(console.error);
-  }, []);
+  const { siteConfig } = useAppStore();
+  const reliability = (siteConfig?.company_reliability || [])
+    .filter((r: any) => r?.status === 1 && r?.title);
 
   if (reliability.length === 0) return null;
 

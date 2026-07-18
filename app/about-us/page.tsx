@@ -1,44 +1,29 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { api } from '@/lib/api';
-import { Loader2 } from 'lucide-react';
 import Footer from '@/components/Footer';
 
-export default function AboutUsPage() {
-  const [loading, setLoading] = useState(true);
-  const [pageData, setPageData] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
+export const dynamic = 'force-dynamic';
 
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    api.getBusinessPages()
-      .then((pages) => {
-        const match = pages.find((p) => p.slug === 'about-us' || p.slug === 'about_us');
-        if (match) {
-          setPageData(match);
-        } else {
-          setError('About Us page not found');
-        }
-      })
-      .catch((err) => {
-        setError('Failed to load page content');
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
+export default async function AboutUsPage() {
+  let pageData: any = null;
+  let error: string | null = null;
+
+  try {
+    const pages = await api.getBusinessPages();
+    const match = pages.find((p) => p.slug === 'about-us' || p.slug === 'about_us');
+    if (match) {
+      pageData = match;
+    } else {
+      error = 'About Us page not found';
+    }
+  } catch (err) {
+    error = 'Failed to load page content';
+  }
 
   return (
     <div className="w-full min-h-[calc(100vh-65px)] overflow-y-auto bg-neutral-gray-50/50">
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-32">
-            <Loader2 className="animate-spin text-primary-600 mb-3" size={28} />
-            <p className="text-xs text-neutral-gray-500 font-semibold">Loading page...</p>
-          </div>
-        ) : error ? (
+        {error ? (
           <div className="bg-neutral-white border border-neutral-gray-200/60 rounded-3xl p-12 text-center shadow-sm">
             <p className="text-sm font-bold text-red-500">{error}</p>
           </div>
@@ -58,19 +43,18 @@ export default function AboutUsPage() {
             )}
 
             {/* Content Section */}
-            <div className="bg-neutral-white border border-neutral-gray-200/60 rounded-3xl p-6 sm:p-10 shadow-md">
-              {!pageData.banner_full_url?.path && (
-                <h1 className="text-xl sm:text-2xl font-black text-neutral-gray-900 tracking-tight mb-6 pb-4 border-b border-neutral-gray-200/60 text-capitalize">
-                  {pageData.title}
-                </h1>
-              )}
+            <div className="bg-neutral-white border border-neutral-gray-200/50 rounded-3xl p-6 sm:p-10 shadow-sm">
               <div 
-                className="text-xs font-semibold text-neutral-gray-700 leading-relaxed space-y-4 prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ __html: pageData.description }}
+                className="prose prose-sm prose-neutral max-w-none text-xs sm:text-sm font-medium text-neutral-gray-600 leading-relaxed space-y-4"
+                dangerouslySetInnerHTML={{ __html: pageData.value }}
               />
             </div>
           </div>
-        ) : null}
+        ) : (
+          <div className="bg-neutral-white border border-neutral-gray-200/60 rounded-3xl p-12 text-center shadow-sm">
+            <p className="text-sm font-bold text-neutral-gray-500">No content available</p>
+          </div>
+        )}
       </main>
       <Footer />
     </div>

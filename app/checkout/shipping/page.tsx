@@ -13,7 +13,8 @@ const ADDRESS_TYPES = ['home', 'office', 'permanent'];
 
 export default function ShippingPage() {
   const router = useRouter();
-  const { cart, getCartSubtotal, isLoggedIn } = useAppStore();
+  const { cart, getCartSubtotal, isLoggedIn, setLoginOpen } = useAppStore();
+  const token = useAppStore((state) => state.token);
 
   // Redirect if cart is empty
   useEffect(() => {
@@ -21,6 +22,28 @@ export default function ShippingPage() {
       router.push('/');
     }
   }, [cart, router]);
+
+  // Prompt login if not logged in
+  useEffect(() => {
+    if (!isLoggedIn && !token) {
+      localStorage.setItem('post_login_redirect', '/checkout/shipping');
+      setLoginOpen(true);
+    }
+  }, [isLoggedIn, token, setLoginOpen]);
+
+  // Sync in-memory cart with backend database
+  useEffect(() => {
+    const syncCartWithBackend = async () => {
+      if ((isLoggedIn || token) && cart.length > 0) {
+        try {
+          await api.syncCart(cart);
+        } catch (err) {
+          console.error('Failed to sync cart with backend:', err);
+        }
+      }
+    };
+    syncCartWithBackend();
+  }, [isLoggedIn, token, cart]);
 
   // Saved addresses
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
@@ -78,9 +101,28 @@ export default function ShippingPage() {
 
         if (defaultShip) {
           setSelectedShippingId(defaultShip.id);
+          setShippingForm({
+            contact_person_name: defaultShip.contact_person_name || '',
+            phone: defaultShip.phone || '',
+            email: defaultShip.email || '',
+            address_type: defaultShip.address_type || 'home',
+            country: defaultShip.country || 'Bangladesh',
+            city: defaultShip.city || '',
+            zip: defaultShip.zip || '',
+            address: defaultShip.address || '',
+          });
         }
         if (defaultBill) {
           setSelectedBillingId(defaultBill.id);
+          setBillingForm({
+            contact_person_name: defaultBill.contact_person_name || '',
+            phone: defaultBill.phone || '',
+            address_type: defaultBill.address_type || 'home',
+            country: defaultBill.country || 'Bangladesh',
+            city: defaultBill.city || '',
+            zip: defaultBill.zip || '',
+            address: defaultBill.address || '',
+          });
         }
       } catch (err) {
         console.error('Failed to load saved addresses', err);
@@ -113,11 +155,37 @@ export default function ShippingPage() {
     }
   };
 
-  // Calculations
+  // Calculations & Configuration States
+  const [shippingCost, setShippingCost] = useState(0);
+  const [tax, setTax] = useState(0);
   const subtotal = getCartSubtotal();
-  const shippingCost = cart.length > 0 ? 60 : 0; // Flat shipping rate
-  const tax = Math.round(subtotal * 0.05); // 5% flat tax
   const total = Math.max(0, subtotal + shippingCost + tax - couponDiscount);
+
+  // Sync pricing from backend cart list details
+  useEffect(() => {
+    const fetchBackendCartPricing = async () => {
+      if (!isLoggedIn && !token) return;
+      try {
+        // Sync cart first
+        await api.syncCart(cart);
+        // Get server cart details including config-based tax and shipping
+        const serverCart = await api.getCartList();
+        if (Array.isArray(serverCart)) {
+          let calculatedTax = 0;
+          let calculatedShipping = 0;
+          serverCart.forEach((item) => {
+            calculatedTax += Number(item.applied_tax || 0);
+            calculatedShipping += Number(item.shipping_cost || 0);
+          });
+          setTax(calculatedTax);
+          setShippingCost(calculatedShipping);
+        }
+      } catch (err) {
+        console.error('Failed to retrieve server cart calculations:', err);
+      }
+    };
+    fetchBackendCartPricing();
+  }, [cart, isLoggedIn, token, couponDiscount]);
 
   // Handle Submit
   const handleContinue = async (e: React.FormEvent) => {
@@ -228,165 +296,192 @@ export default function ShippingPage() {
             <div className="bg-neutral-white border border-neutral-gray-200/60 rounded-3xl p-6 md:p-8 shadow-sm">
               <h2 className="text-base font-extrabold text-neutral-gray-900 mb-6 uppercase tracking-wider">Shipping Address</h2>
 
-              {/* Saved Shipping Addresses */}
+              {/* Saved Shipping Addresses Dropdown */}
               {isLoggedIn && savedAddresses.length > 0 && (
                 <div className="mb-6">
-                  <label className="block text-xs font-extrabold uppercase text-neutral-gray-400 mb-3">Choose from saved addresses</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Choose from saved addresses</label>
+                  <select
+                    value={selectedShippingId || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '') {
+                        setSelectedShippingId(null);
+                        setShippingForm({
+                          contact_person_name: '',
+                          phone: '',
+                          email: '',
+                          address_type: 'home',
+                          country: 'Bangladesh',
+                          city: '',
+                          zip: '',
+                          address: '',
+                        });
+                      } else {
+                        const id = Number(val);
+                        setSelectedShippingId(id);
+                        const addr = savedAddresses.find(a => a.id === id);
+                        if (addr) {
+                          setShippingForm({
+                            contact_person_name: addr.contact_person_name || '',
+                            phone: addr.phone || '',
+                            email: addr.email || '',
+                            address_type: addr.address_type || 'home',
+                            country: addr.country || 'Bangladesh',
+                            city: addr.city || '',
+                            zip: addr.zip || '',
+                            address: addr.address || '',
+                          });
+                        }
+                      }
+                    }}
+                    className="w-full bg-neutral-white px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold appearance-none cursor-pointer"
+                  >
                     {savedAddresses.map((addr) => (
-                      <div
-                        key={addr.id}
-                        onClick={() => setSelectedShippingId(addr.id)}
-                        className={`border rounded-2xl p-4 cursor-pointer transition-all relative ${
-                          selectedShippingId === addr.id
-                            ? 'border-primary-600 bg-primary-50/10 shadow-sm'
-                            : 'border-neutral-gray-200/60 hover:border-neutral-gray-300'
-                        }`}
-                      >
-                        {selectedShippingId === addr.id && (
-                          <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-primary-600 text-neutral-white flex items-center justify-center">
-                            <Check size={12} strokeWidth={3} />
-                          </div>
-                        )}
-                        <span className="inline-block text-[10px] uppercase font-extrabold bg-neutral-100 text-neutral-gray-600 px-2 py-0.5 rounded-full mb-2">
-                          {addr.address_type}
-                        </span>
-                        <h4 className="text-xs font-bold text-neutral-gray-900 mb-1">{addr.contact_person_name}</h4>
-                        <p className="text-xs text-neutral-gray-600 line-clamp-2 mb-2">{addr.address}, {addr.city}</p>
-                        <p className="text-xs font-semibold text-neutral-gray-500">{addr.phone}</p>
-                      </div>
+                      <option key={addr.id} value={addr.id}>
+                        {addr.contact_person_name} - {addr.address}, {addr.city} ({addr.address_type})
+                      </option>
                     ))}
-                    <div
-                      onClick={() => setSelectedShippingId(null)}
-                      className={`border border-dashed rounded-2xl p-4 cursor-pointer transition-all flex flex-col items-center justify-center text-center gap-2 ${
-                        selectedShippingId === null
-                          ? 'border-primary-600 bg-primary-50/10'
-                          : 'border-neutral-gray-300 hover:border-neutral-gray-400'
-                      }`}
-                    >
-                      <MapPin size={20} className={selectedShippingId === null ? 'text-primary-600' : 'text-neutral-gray-400'} />
-                      <span className="text-xs font-bold text-neutral-gray-800">Add New Address</span>
-                    </div>
-                  </div>
+                    <option value="">-- Add New Address --</option>
+                  </select>
                 </div>
               )}
 
-              {/* Shipping Manual Input Form */}
-              {selectedShippingId === null && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Contact Person Name *</label>
-                    <input
-                      type="text"
-                      value={shippingForm.contact_person_name}
-                      onChange={(e) => setShippingForm({ ...shippingForm, contact_person_name: e.target.value })}
-                      placeholder="e.g. John Doe"
-                      className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Phone *</label>
-                    <input
-                      type="tel"
-                      value={shippingForm.phone}
-                      onChange={(e) => setShippingForm({ ...shippingForm, phone: e.target.value })}
-                      placeholder="e.g. +8801700000000"
-                      className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold"
-                      required
-                    />
-                  </div>
-                  {!isLoggedIn && (
-                    <div className="sm:col-span-2">
-                      <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Email *</label>
-                      <input
-                        type="email"
-                        value={shippingForm.email}
-                        onChange={(e) => setShippingForm({ ...shippingForm, email: e.target.value })}
-                        placeholder="e.g. john@example.com"
-                        className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold"
-                        required
-                      />
-                    </div>
-                  )}
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Address Type</label>
-                    <div className="relative">
-                      <select
-                        value={shippingForm.address_type}
-                        onChange={(e) => setShippingForm({ ...shippingForm, address_type: e.target.value })}
-                        className="w-full bg-neutral-white px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold capitalize appearance-none cursor-pointer"
-                      >
-                        {ADDRESS_TYPES.map((t) => (
-                          <option key={t} value={t}>{t}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Country *</label>
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setShipCountryOpen(!shipCountryOpen)}
-                        className="w-full flex justify-between items-center bg-neutral-white px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold text-left"
-                      >
-                        <span>{shippingForm.country}</span>
-                      </button>
-                      {shipCountryOpen && (
-                        <div className="absolute z-30 left-0 right-0 mt-2 bg-neutral-white border border-neutral-gray-200/80 rounded-2xl shadow-xl max-h-48 overflow-y-auto">
-                          {COUNTRIES.map((c) => (
-                            <button
-                              key={c}
-                              type="button"
-                              onClick={() => {
-                                setShippingForm({ ...shippingForm, country: c });
-                                setShipCountryOpen(false);
-                              }}
-                              className="w-full text-left px-4 py-2.5 hover:bg-neutral-gray-50 text-xs font-bold text-neutral-gray-700 transition-colors"
-                            >
-                              {c}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">City *</label>
-                    <input
-                      type="text"
-                      value={shippingForm.city}
-                      onChange={(e) => setShippingForm({ ...shippingForm, city: e.target.value })}
-                      placeholder="e.g. Dhaka"
-                      className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Zip Code *</label>
-                    <input
-                      type="text"
-                      value={shippingForm.zip}
-                      onChange={(e) => setShippingForm({ ...shippingForm, zip: e.target.value })}
-                      placeholder="e.g. 1200"
-                      className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold"
-                      required
-                    />
-                  </div>
+              {/* Shipping Manual Input Form (Always visible, pre-filled) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+                <div>
+                  <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Contact Person Name *</label>
+                  <input
+                    type="text"
+                    value={shippingForm.contact_person_name}
+                    onChange={(e) => {
+                      setShippingForm({ ...shippingForm, contact_person_name: e.target.value });
+                      setSelectedShippingId(null);
+                    }}
+                    placeholder="e.g. John Doe"
+                    className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Phone *</label>
+                  <input
+                    type="tel"
+                    value={shippingForm.phone}
+                    onChange={(e) => {
+                      setShippingForm({ ...shippingForm, phone: e.target.value });
+                      setSelectedShippingId(null);
+                    }}
+                    placeholder="e.g. +8801700000000"
+                    className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold"
+                    required
+                  />
+                </div>
+                {!isLoggedIn && (
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Full Address *</label>
-                    <textarea
-                      value={shippingForm.address}
-                      onChange={(e) => setShippingForm({ ...shippingForm, address: e.target.value })}
-                      placeholder="House No, Road No, Area details"
-                      rows={3}
-                      className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold resize-none"
+                    <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Email *</label>
+                    <input
+                      type="email"
+                      value={shippingForm.email}
+                      onChange={(e) => {
+                        setShippingForm({ ...shippingForm, email: e.target.value });
+                        setSelectedShippingId(null);
+                      }}
+                      placeholder="e.g. john@example.com"
+                      className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold"
                       required
                     />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Address Type</label>
+                  <div className="relative">
+                    <select
+                      value={shippingForm.address_type}
+                      onChange={(e) => {
+                        setShippingForm({ ...shippingForm, address_type: e.target.value });
+                        setSelectedShippingId(null);
+                      }}
+                      className="w-full bg-neutral-white px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold capitalize appearance-none cursor-pointer"
+                    >
+                      {ADDRESS_TYPES.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-              )}
+                <div>
+                  <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Country *</label>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShipCountryOpen(!shipCountryOpen)}
+                      className="w-full flex justify-between items-center bg-neutral-white px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold text-left"
+                    >
+                      <span>{shippingForm.country}</span>
+                    </button>
+                    {shipCountryOpen && (
+                      <div className="absolute z-30 left-0 right-0 mt-2 bg-neutral-white border border-neutral-gray-200/80 rounded-2xl shadow-xl max-h-48 overflow-y-auto">
+                        {COUNTRIES.map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => {
+                              setShippingForm({ ...shippingForm, country: c });
+                              setSelectedShippingId(null);
+                              setShipCountryOpen(false);
+                            }}
+                            className="w-full text-left px-4 py-2.5 hover:bg-neutral-gray-50 text-xs font-bold text-neutral-gray-700 transition-colors"
+                          >
+                            {c}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">City *</label>
+                  <input
+                    type="text"
+                    value={shippingForm.city}
+                    onChange={(e) => {
+                      setShippingForm({ ...shippingForm, city: e.target.value });
+                      setSelectedShippingId(null);
+                    }}
+                    placeholder="e.g. Dhaka"
+                    className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Zip Code *</label>
+                  <input
+                    type="text"
+                    value={shippingForm.zip}
+                    onChange={(e) => {
+                      setShippingForm({ ...shippingForm, zip: e.target.value });
+                      setSelectedShippingId(null);
+                    }}
+                    placeholder="e.g. 1200"
+                    className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold"
+                    required
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Full Address *</label>
+                  <textarea
+                    value={shippingForm.address}
+                    onChange={(e) => {
+                      setShippingForm({ ...shippingForm, address: e.target.value });
+                      setSelectedShippingId(null);
+                    }}
+                    placeholder="House No, Road No, Area details"
+                    rows={3}
+                    className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold resize-none"
+                    required
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Toggle Billing Same As Shipping */}
@@ -410,146 +505,169 @@ export default function ShippingPage() {
 
                 {isLoggedIn && savedAddresses.length > 0 && (
                   <div className="mb-6">
-                    <label className="block text-xs font-extrabold uppercase text-neutral-gray-400 mb-3">Choose from saved addresses</label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Choose from saved addresses</label>
+                    <select
+                      value={selectedBillingId || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '') {
+                          setSelectedBillingId(null);
+                          setBillingForm({
+                            contact_person_name: '',
+                            phone: '',
+                            address_type: 'home',
+                            country: 'Bangladesh',
+                            city: '',
+                            zip: '',
+                            address: '',
+                          });
+                        } else {
+                          const id = Number(val);
+                          setSelectedBillingId(id);
+                          const addr = savedAddresses.find(a => a.id === id);
+                          if (addr) {
+                            setBillingForm({
+                              contact_person_name: addr.contact_person_name || '',
+                              phone: addr.phone || '',
+                              address_type: addr.address_type || 'home',
+                              country: addr.country || 'Bangladesh',
+                              city: addr.city || '',
+                              zip: addr.zip || '',
+                              address: addr.address || '',
+                            });
+                          }
+                        }
+                      }}
+                      className="w-full bg-neutral-white px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold appearance-none cursor-pointer"
+                    >
                       {savedAddresses.map((addr) => (
-                        <div
-                          key={addr.id}
-                          onClick={() => setSelectedBillingId(addr.id)}
-                          className={`border rounded-2xl p-4 cursor-pointer transition-all relative ${
-                            selectedBillingId === addr.id
-                              ? 'border-primary-600 bg-primary-50/10 shadow-sm'
-                              : 'border-neutral-gray-200/60 hover:border-neutral-gray-300'
-                          }`}
-                        >
-                          {selectedBillingId === addr.id && (
-                            <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-primary-600 text-neutral-white flex items-center justify-center">
-                              <Check size={12} strokeWidth={3} />
-                            </div>
-                          )}
-                          <span className="inline-block text-[10px] uppercase font-extrabold bg-neutral-100 text-neutral-gray-600 px-2 py-0.5 rounded-full mb-2">
-                            {addr.address_type}
-                          </span>
-                          <h4 className="text-xs font-bold text-neutral-gray-900 mb-1">{addr.contact_person_name}</h4>
-                          <p className="text-xs text-neutral-gray-600 line-clamp-2 mb-2">{addr.address}, {addr.city}</p>
-                          <p className="text-xs font-semibold text-neutral-gray-500">{addr.phone}</p>
-                        </div>
+                        <option key={addr.id} value={addr.id}>
+                          {addr.contact_person_name} - {addr.address}, {addr.city} ({addr.address_type})
+                        </option>
                       ))}
-                      <div
-                        onClick={() => setSelectedBillingId(null)}
-                        className={`border border-dashed rounded-2xl p-4 cursor-pointer transition-all flex flex-col items-center justify-center text-center gap-2 ${
-                          selectedBillingId === null
-                            ? 'border-primary-600 bg-primary-50/10'
-                            : 'border-neutral-gray-300 hover:border-neutral-gray-400'
-                        }`}
-                      >
-                        <MapPin size={20} className={selectedBillingId === null ? 'text-primary-600' : 'text-neutral-gray-400'} />
-                        <span className="text-xs font-bold text-neutral-gray-800">Add New Billing Address</span>
-                      </div>
-                    </div>
+                      <option value="">-- Add New Billing Address --</option>
+                    </select>
                   </div>
                 )}
 
-                {selectedBillingId === null && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-                    <div>
-                      <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Contact Person Name *</label>
-                      <input
-                        type="text"
-                        value={billingForm.contact_person_name}
-                        onChange={(e) => setBillingForm({ ...billingForm, contact_person_name: e.target.value })}
-                        placeholder="e.g. John Doe"
-                        className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Phone *</label>
-                      <input
-                        type="tel"
-                        value={billingForm.phone}
-                        onChange={(e) => setBillingForm({ ...billingForm, phone: e.target.value })}
-                        placeholder="e.g. +8801700000000"
-                        className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Address Type</label>
-                      <select
-                        value={billingForm.address_type}
-                        onChange={(e) => setBillingForm({ ...billingForm, address_type: e.target.value })}
-                        className="w-full bg-neutral-white px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold capitalize appearance-none cursor-pointer"
+                {/* Billing Manual Input Form (Always visible, pre-filled) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Contact Person Name *</label>
+                    <input
+                      type="text"
+                      value={billingForm.contact_person_name}
+                      onChange={(e) => {
+                        setBillingForm({ ...billingForm, contact_person_name: e.target.value });
+                        setSelectedBillingId(null);
+                      }}
+                      placeholder="e.g. John Doe"
+                      className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Phone *</label>
+                    <input
+                      type="tel"
+                      value={billingForm.phone}
+                      onChange={(e) => {
+                        setBillingForm({ ...billingForm, phone: e.target.value });
+                        setSelectedBillingId(null);
+                      }}
+                      placeholder="e.g. +8801700000000"
+                      className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Address Type</label>
+                    <select
+                      value={billingForm.address_type}
+                      onChange={(e) => {
+                        setBillingForm({ ...billingForm, address_type: e.target.value });
+                        setSelectedBillingId(null);
+                      }}
+                      className="w-full bg-neutral-white px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold capitalize appearance-none cursor-pointer"
+                    >
+                      {ADDRESS_TYPES.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Country *</label>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setBillCountryOpen(!billCountryOpen)}
+                        className="w-full flex justify-between items-center bg-neutral-white px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold text-left"
                       >
-                        {ADDRESS_TYPES.map((t) => (
-                          <option key={t} value={t}>{t}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Country *</label>
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setBillCountryOpen(!billCountryOpen)}
-                          className="w-full flex justify-between items-center bg-neutral-white px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold text-left"
-                        >
-                          <span>{billingForm.country}</span>
-                        </button>
-                        {billCountryOpen && (
-                          <div className="absolute z-30 left-0 right-0 mt-2 bg-neutral-white border border-neutral-gray-200/80 rounded-2xl shadow-xl max-h-48 overflow-y-auto">
-                            {COUNTRIES.map((c) => (
-                              <button
-                                key={c}
-                                type="button"
-                                onClick={() => {
-                                  setBillingForm({ ...billingForm, country: c });
-                                  setBillCountryOpen(false);
-                                }}
-                                className="w-full text-left px-4 py-2.5 hover:bg-neutral-gray-50 text-xs font-bold text-neutral-gray-700 transition-colors"
-                              >
-                                {c}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">City *</label>
-                      <input
-                        type="text"
-                        value={billingForm.city}
-                        onChange={(e) => setBillingForm({ ...billingForm, city: e.target.value })}
-                        placeholder="e.g. Dhaka"
-                        className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Zip Code *</label>
-                      <input
-                        type="text"
-                        value={billingForm.zip}
-                        onChange={(e) => setBillingForm({ ...billingForm, zip: e.target.value })}
-                        placeholder="e.g. 1200"
-                        className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold"
-                        required
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Full Address *</label>
-                      <textarea
-                        value={billingForm.address}
-                        onChange={(e) => setBillingForm({ ...billingForm, address: e.target.value })}
-                        placeholder="House No, Road No, Area details"
-                        rows={3}
-                        className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold resize-none"
-                        required
-                      />
+                        <span>{billingForm.country}</span>
+                      </button>
+                      {billCountryOpen && (
+                        <div className="absolute z-30 left-0 right-0 mt-2 bg-neutral-white border border-neutral-gray-200/80 rounded-2xl shadow-xl max-h-48 overflow-y-auto">
+                          {COUNTRIES.map((c) => (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => {
+                                setBillingForm({ ...billingForm, country: c });
+                                setSelectedBillingId(null);
+                                setBillCountryOpen(false);
+                              }}
+                              className="w-full text-left px-4 py-2.5 hover:bg-neutral-gray-50 text-xs font-bold text-neutral-gray-700 transition-colors"
+                            >
+                              {c}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
-                )}
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">City *</label>
+                    <input
+                      type="text"
+                      value={billingForm.city}
+                      onChange={(e) => {
+                        setBillingForm({ ...billingForm, city: e.target.value });
+                        setSelectedBillingId(null);
+                      }}
+                      placeholder="e.g. Dhaka"
+                      className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Zip Code *</label>
+                    <input
+                      type="text"
+                      value={billingForm.zip}
+                      onChange={(e) => {
+                        setBillingForm({ ...billingForm, zip: e.target.value });
+                        setSelectedBillingId(null);
+                      }}
+                      placeholder="e.g. 1200"
+                      className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold"
+                      required
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold text-neutral-gray-700 mb-1.5">Full Address *</label>
+                    <textarea
+                      value={billingForm.address}
+                      onChange={(e) => {
+                        setBillingForm({ ...billingForm, address: e.target.value });
+                        setSelectedBillingId(null);
+                      }}
+                      placeholder="House No, Road No, Area details"
+                      rows={3}
+                      className="w-full px-4 py-3 border border-neutral-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-600/10 focus:border-primary-600 text-xs font-semibold resize-none"
+                      required
+                    />
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -596,13 +714,19 @@ export default function ShippingPage() {
               </h3>
 
               <div className="space-y-3">
-                {cart.map((item) => (
-                  <div key={item.product.id} className="flex gap-3 justify-between items-center text-xs font-semibold text-neutral-gray-600">
-                    <span className="truncate flex-1 max-w-[200px]">{item.product.name}</span>
-                    <span className="shrink-0">qty: {item.quantity}</span>
-                    <span className="font-bold text-neutral-gray-800 shrink-0">৳{item.product.unit_price * item.quantity}</span>
-                  </div>
-                ))}
+                {cart.map((item) => {
+                  const discount = item.product.discount || 0;
+                  const finalPrice = item.product.discount_type === 'amount' || item.product.discount_type === 'flat'
+                    ? Math.max(0, item.product.unit_price - discount)
+                    : Math.max(0, item.product.unit_price - (item.product.unit_price * discount) / 100);
+                  return (
+                    <div key={item.product.id} className="flex gap-3 justify-between items-center text-xs font-semibold text-neutral-gray-600">
+                      <span className="truncate flex-1 max-w-[200px]">{item.product.name}</span>
+                      <span className="shrink-0">qty: {item.quantity}</span>
+                      <span className="font-bold text-neutral-gray-800 shrink-0">৳{finalPrice * item.quantity}</span>
+                    </div>
+                  );
+                })}
               </div>
 
               <div className="border-t border-neutral-gray-100 pt-4 space-y-3">
@@ -645,7 +769,6 @@ export default function ShippingPage() {
                 )}
               </button>
             </div>
-            
             <CompanyReliability />
           </div>
         </div>

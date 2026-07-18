@@ -4,6 +4,7 @@ import React, { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import ProductCard from '@/components/ProductCard';
 import { api, Product, Category, Brand } from '@/lib/api';
+import { useAppStore } from '@/lib/store';
 import {
   ChevronRight,
   Loader2,
@@ -43,8 +44,11 @@ export function SearchPageContent({
   const paramCategory = searchParams.get('category') || '';
   const paramBrand = searchParams.get('brand') || '';
 
+  // Read categories from global store (populated by Sidebar on first load)
+  const { categories: storeCategories, categoriesLoaded, setCategories: setStoreCategories } = useAppStore();
+
   // Filter lists fetched on mount
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<Category[]>(storeCategories);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [authors, setAuthors] = useState<any[]>([]);
   const [publishers, setPublishers] = useState<any[]>([]);
@@ -192,19 +196,29 @@ export function SearchPageContent({
   // Fetch filter metadata lists on mount
   useEffect(() => {
     let active = true;
-    api.getCategories()
-      .then((data) => { if (active) setCategories(data); })
-      .catch(() => {})
-      .finally(() => { if (active) setCategoriesLoading(false); });
 
-    api.getBrands()
-      .then((data) => { if (active) setBrands(data); })
-      .catch(() => {})
-      .finally(() => { if (active) setBrandsLoading(false); });
+    // Use cached categories from store, otherwise fetch and cache them
+    const fetchCats = categoriesLoaded
+      ? Promise.resolve(storeCategories)
+      : api.getCategories().then((data) => { setStoreCategories(data); return data; });
 
-    api.getAuthors().then((data) => { if (active) setAuthors(data); }).catch(() => {});
-    api.getPublishingHouses().then((data) => { if (active) setPublishers(data); }).catch(() => {});
+    Promise.allSettled([
+      fetchCats,
+      api.getBrands(),
+      api.getAuthors(),
+      api.getPublishingHouses(),
+    ]).then(([catsRes, brandsRes, authorsRes, publishersRes]) => {
+      if (!active) return;
+      if (catsRes.status === 'fulfilled') setCategories(catsRes.value);
+      if (brandsRes.status === 'fulfilled') setBrands(brandsRes.value);
+      if (authorsRes.status === 'fulfilled') setAuthors(authorsRes.value);
+      if (publishersRes.status === 'fulfilled') setPublishers(publishersRes.value);
+      setCategoriesLoading(false);
+      setBrandsLoading(false);
+    });
+
     return () => { active = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 1. Initial Load filters from URL params

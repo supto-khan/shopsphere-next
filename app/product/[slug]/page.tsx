@@ -82,7 +82,7 @@ function formatReviewDate(dateStr?: string): string {
 
 /** Calculate discounted price. */
 function getDiscountedPrice(unitPrice: number, discount: number, discountType: string): number {
-  if (discountType === "amount") return Math.max(0, unitPrice - discount);
+  if (discountType === "amount" || discountType === "flat") return Math.max(0, unitPrice - discount);
   return Math.max(0, unitPrice - (unitPrice * discount) / 100);
 }
 
@@ -351,20 +351,44 @@ export default function ProductDetailPage() {
   useEffect(() => {
     if (!slug) return;
     let active = true;
+
+    // Reset UI state on slug change
     setLoading(true);
     setNotFound(false);
+    setProduct(null);
+    setRelatedProducts([]);
+    setStoreProducts([]);
+    setSellerInfo(null);
+    setConfig(null);
     setActiveImage(0);
     setShowFullDesc(false);
     setReviewsLimit(3);
     setTab("overview");
-    api
-      .getProductDetails(slug)
-      .then((data) => {
-        if (!active) return;
-        if (!data || Object.keys(data).length === 0) {
-          setNotFound(true);
-          return;
-        }
+
+    async function loadProductPage() {
+      // ── Step 1: fetch product details + config in parallel ─────────────────
+      // getConfig() is cached so it resolves instantly on repeat visits.
+      const [productRes, configRes] = await Promise.allSettled([
+        api.getProductDetails(slug as string),
+        api.getConfig(),
+      ]);
+
+      if (!active) return;
+
+      // Handle config (non-critical — used for in-house shop slug)
+      const configData = configRes.status === "fulfilled" ? configRes.value : null;
+      if (active) setConfig(configData);
+
+      // Handle product details
+      if (productRes.status === "rejected" || !productRes.value || Object.keys(productRes.value).length === 0) {
+        if (active) { setNotFound(true); setLoading(false); }
+        return;
+      }
+
+      const data = productRes.value;
+
+      // Apply product data to state
+      if (active) {
         setProduct(data);
         const colors = parseColors(data.colors);
         setSelectedColor(colors.length ? colors[0] : null);
@@ -376,75 +400,35 @@ export default function ProductDetailPage() {
         setSelectedChoices(initial);
         setQty(Number(data.minimum_order_qty) || 1);
         setWishlisted(Number(data.wish_list_count) > 0 && data.wish_list_count !== undefined);
-      })
-      .catch(() => {
-        if (active) setNotFound(true);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [slug]);
+        setLoading(false);
+      }
 
-  // Fetch configuration once on mount
-  useEffect(() => {
-    let active = true;
-    api
-      .getConfig()
-      .then((c) => {
-        if (active) setConfig(c);
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, []);
+      // ── Step 2: fire all secondary fetches in parallel ─────────────────────
+      // Now we have both product and config, so we can resolve the store slug.
+      const isSeller = data.added_by === "seller";
+      const sellerSlug = isSeller ? data?.seller?.shop?.slug : null;
+      const storeSlug = sellerSlug || configData?.in_house_shop?.slug;
 
-  // Fetch related products when product or slug changes
-  useEffect(() => {
-    if (!product || !slug) return;
-    let active = true;
-    console.log("API FETCH related products for:", slug);
-    api
-      .getRelatedProducts(slug)
-      .then((list) => {
-        console.log("API FETCH related products success:", list?.length, "items");
-        if (active) setRelatedProducts(Array.isArray(list) ? list : []);
-      })
-      .catch((err) => {
-        console.error("API FETCH related products failed:", err);
-      });
-    return () => {
-      active = false;
-    };
-  }, [product, slug]);
+      const secondaryFetches: Promise<any>[] = [
+        api.getRelatedProducts(slug as string).catch(() => []),
+      ];
+      if (storeSlug) {
+        secondaryFetches.push(api.getVendorProducts(storeSlug).catch(() => []));
+        secondaryFetches.push(api.getSellerInfo(storeSlug).catch(() => null));
+      }
 
-  useEffect(() => {
-    if (!product) return;
-    let active = true;
-    const isSeller = product.added_by === "seller";
-    const sellerSlug = isSeller ? product?.seller?.shop?.slug : null;
-    const storeSlug = sellerSlug || config?.in_house_shop?.slug;
-    if (storeSlug) {
-      api
-        .getVendorProducts(storeSlug)
-        .then((list) => {
-          if (active) setStoreProducts(Array.isArray(list) ? list : []);
-        })
-        .catch(() => {});
-      api
-        .getSellerInfo(storeSlug)
-        .then((info) => {
-          if (active) setSellerInfo(info);
-        })
-        .catch(() => {});
+      const [relatedRes, vendorRes, sellerRes] = await Promise.allSettled(secondaryFetches);
+
+      if (!active) return;
+
+      if (relatedRes?.status === "fulfilled") setRelatedProducts(Array.isArray(relatedRes.value) ? relatedRes.value : []);
+      if (vendorRes?.status === "fulfilled") setStoreProducts(Array.isArray(vendorRes.value) ? vendorRes.value : []);
+      if (sellerRes?.status === "fulfilled" && sellerRes.value) setSellerInfo(sellerRes.value);
     }
-    return () => {
-      active = false;
-    };
-  }, [product, config]);
+
+    loadProductPage();
+    return () => { active = false; };
+  }, [slug]);
 
   // Sticky bar: show when main details scroll out of view
   useEffect(() => {

@@ -75,6 +75,8 @@ export default function PaymentPage() {
     setErrorMsg(null);
 
     try {
+      // Force final cart sync with backend database
+      await api.syncCart(cart);
       let res: any;
       if (paymentMethod === 'cod') {
         const payload = {

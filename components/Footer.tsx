@@ -1,11 +1,8 @@
-"use client";
-
-import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { api, BACKEND_URL } from "@/lib/api";
-import { useAppStore } from "@/lib/store";
-import { Phone, Mail, UserCheck, MapPin, Link2 } from "lucide-react";
-import Link from "next/link";
+import React from 'react';
+import Link from 'next/link';
+import { Phone, Mail, UserCheck, MapPin, Link2 } from 'lucide-react';
+import { BACKEND_URL } from '@/lib/api';
+import FooterSubscribeForm from './FooterSubscribeForm';
 
 interface IconProps extends React.SVGProps<SVGSVGElement> {
   size?: number | string;
@@ -58,9 +55,9 @@ const Instagram = ({ size = 24, ...props }: IconProps) => (
     strokeLinejoin="round"
     {...props}
   >
-    <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+    <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
     <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
   </svg>
 );
 
@@ -77,27 +74,9 @@ const Linkedin = ({ size = 24, ...props }: IconProps) => (
     strokeLinejoin="round"
     {...props}
   >
-    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
-    <rect width="4" height="12" x="2" y="9" />
+    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-9a6 6 0 0 1 6-6z" />
+    <rect x="2" y="9" width="4" height="12" />
     <circle cx="4" cy="4" r="2" />
-  </svg>
-);
-
-const Youtube = ({ size = 24, ...props }: IconProps) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17z" />
-    <polygon points="10 15 15 12 10 9" />
   </svg>
 );
 
@@ -114,13 +93,11 @@ const Pinterest = ({ size = 24, ...props }: IconProps) => (
     strokeLinejoin="round"
     {...props}
   >
-    <circle cx="12" cy="12" r="10" />
-    <path d="M10 7.5v9.5c0 1.5-.5 2.5-1.5 3.5" />
-    <path d="M10 7.5h3.5c1.7 0 3 1.3 3 3s-1.3 3-3 3H10" />
+    <path d="M8 22a3.75 3.75 0 0 1 .49-1.92c.31-1.32 1.83-7.79 1.83-7.79s-.45-.91-.45-2.26c0-2.12 1.23-3.7 2.76-3.7 1.3 0 1.93.98 1.93 2.15 0 1.31-.83 3.26-1.26 5.08-.36 1.52.76 2.76 2.26 2.76 2.71 0 4.8-2.86 4.8-6.99 0-3.65-2.62-6.21-6.38-6.21-4.35 0-6.9 3.26-6.9 6.63 0 1.31.5 2.72 1.13 3.48a.39.39 0 0 1 .09.37c-.1.42-.33 1.37-.38 1.56a.31.31 0 0 1-.29.21c-1.29-.6-2.1-2.48-2.1-3.99 0-5.71 4.15-10.96 11.97-10.96 6.29 0 11.17 4.48 11.17 10.46 0 6.25-3.94 11.28-9.4 11.28-1.84 0-3.56-.96-4.15-2.09 0 0-.91 3.46-1.13 4.31-.41 1.58-1.52 3.56-2.27 4.79z" />
   </svg>
 );
 
-const GooglePlus = ({ size = 24, ...props }: IconProps) => (
+const Google = ({ size = 24, ...props }: IconProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width={size}
@@ -133,51 +110,37 @@ const GooglePlus = ({ size = 24, ...props }: IconProps) => (
     strokeLinejoin="round"
     {...props}
   >
-    <path d="M14.5 8.5C13.5 7 11.8 6 10 6c-3.3 0-6 2.7-6 6s2.7 6 6 6c1.8 0 3.5-1 4.5-2.5V12h-4" />
-    <path d="M18 12h4M20 10v4" />
+    <path d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.111 4.114a5.755 5.755 0 0 1-5.776-5.776c0-3.19 2.585-5.776 5.776-5.776 1.492 0 2.853.567 3.886 1.492l3.226-3.226C19.14 3.46 15.9 2 12.24 2 6.58 2 2 6.58 2 12.24s4.58 10.24 10.24 10.24c5.795 0 10.254-4.074 10.254-10.24 0-.693-.076-1.36-.189-1.955H12.24z" />
   </svg>
 );
 
+const Youtube = ({ size = 24, ...props }: IconProps) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" />
+    <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" />
+  </svg>
+);
 
+interface FooterProps {
+  config?: any;
+}
 
-export default function Footer() {
-  const router = useRouter();
-  const { isLoggedIn } = useAppStore();
-  const [config, setConfig] = useState<any>(null);
-  const [email, setEmail] = useState("");
-  const [subscribing, setSubscribing] = useState(false);
-  const [subscribedMsg, setSubscribedMsg] = useState("");
-
-  useEffect(() => {
-    api
-      .getConfig()
-      .then((res) => {
-        setConfig(res);
-      })
-      .catch((err) => {
-        console.error("Failed to load footer config", err);
-      });
-  }, []);
-
-  const handleSubscribe = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-    setSubscribing(true);
-    setSubscribedMsg("");
-    try {
-      // Mock or call subscription endpoint if it exists
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setSubscribedMsg("Thank you for subscribing!");
-      setEmail("");
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSubscribing(false);
-    }
-  };
-
+export default function Footer({ config: propConfig }: FooterProps) {
+  // Use provided config or fallback to empty object if not loaded yet
+  const config = propConfig || {};
   // Extract clean logo path
-  let footerLogo = "/logo-placeholder.png";
+  let footerLogo = "/shopsphere.png";
   const logoObj = config?.footer_logo?.path ? config.footer_logo : config?.company_logo;
   if (logoObj && typeof logoObj === "object" && logoObj.path) {
     const cleanPath = logoObj.path.replace(/^https?:\/\/[^\/]+/, "");
@@ -268,75 +231,71 @@ export default function Footer() {
             <h4 className="text-xs font-extrabold text-neutral-gray-900 uppercase tracking-wider mb-1">
               Blog
             </h4>
-            <p className="text-[10px] text-neutral-gray-500">Check Latest Blogs.</p>
+            <p className="text-[10px] text-neutral-gray-500">Read our latest posts.</p>
           </Link>
         </div>
       </div>
-      <footer className="bg-gray-200/30 border-t border-primary-100/60 w-full">
-        {/* Main Footer Body links/newsletter */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-            {/* Logo & app download column */}
+
+      <footer className="bg-neutral-white border-t border-neutral-gray-200/50 mt-auto select-none">
+        {/* Main Footer Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 md:py-16">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12">
+            {/* Branding, About, and App Download */}
             <div className="md:col-span-3 space-y-6">
               <Link href="/" className="inline-block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={footerLogo}
-                  alt={config?.company_name || "ShopSphere"}
-                  className="max-h-12 object-contain"
+                  alt={config?.company_name || "Logo"}
+                  className="h-10 w-auto object-contain"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    // Prevent infinite loop if fallback image also fails
+                    target.onerror = null;
+                    target.src = "/shopsphere.png";
+                  }}
                 />
               </Link>
+              <p className="text-xs text-neutral-gray-500 leading-relaxed font-medium">
+                ShopSphere is a multi-vendor ecommerce platform offering high-quality items, quick delivery, and secure checkouts.
+              </p>
 
-              {showAppSection && (
-                <div className="space-y-3">
-                  <h5 className="text-[10px] font-extrabold text-neutral-gray-400 uppercase tracking-wider">
-                    Download Our App
-                  </h5>
-                  <div className="flex gap-2">
-                    {showIos && (
+              {/* Social Icons */}
+              {socialMedia.length > 0 && (
+                <div className="flex flex-wrap gap-2.5">
+                  {socialMedia.map((sm: any, i: number) => {
+                    if (sm.status !== 1 && sm.status !== "1") return null;
+                    let icon = null;
+                    const c = "w-4 h-4";
+                    if (sm.name === "facebook") icon = <Facebook size={16} className={c} />;
+                    else if (sm.name === "twitter") icon = <Twitter size={16} className={c} />;
+                    else if (sm.name === "instagram") icon = <Instagram size={16} className={c} />;
+                    else if (sm.name === "linkedin") icon = <Linkedin size={16} className={c} />;
+                    else if (sm.name === "pinterest") icon = <Pinterest size={16} className={c} />;
+                    else if (sm.name === "google-play") icon = <Google size={16} className={c} />;
+                    else if (sm.name === "youtube") icon = <Youtube size={16} className={c} />;
+                    else icon = <Link2 size={16} className={c} />;
+
+                    return (
                       <a
-                        href={config?.ios?.link || "#"}
+                        key={i}
+                        href={sm.link}
                         target="_blank"
-                        rel="noreferrer"
-                        className="inline-block transition-transform hover:-translate-y-0.5"
+                        rel="noopener noreferrer"
+                        className="w-8 h-8 rounded-full border border-neutral-gray-200 flex items-center justify-center text-neutral-gray-500 hover:text-primary-600 hover:border-primary-600 hover:bg-primary-50/10 transition-all duration-300"
+                        title={sm.name}
                       >
-                        <img
-                          width="90"
-                          src="/apple_app.png"
-                          alt="Apple App Store"
-                          className="object-contain"
-                          onError={(e) => {
-                            e.currentTarget.src =
-                              "https://activeitzone.com/demo_images/app-store.png";
-                          }}
-                        />
+                        {icon}
                       </a>
-                    )}
-                    {showAndroid && (
-                      <a
-                        href={config?.android?.link || "#"}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-block transition-transform hover:-translate-y-0.5"
-                      >
-                        <img
-                          width="90"
-                          src="/google_app.png"
-                          alt="Google Play Store"
-                          className="object-contain"
-                          onError={(e) => {
-                            e.currentTarget.src =
-                              "https://activeitzone.com/demo_images/play-store.png";
-                          }}
-                        />
-                      </a>
-                    )}
-                  </div>
+                    );
+                  })}
                 </div>
               )}
 
+              {/* Vendor Zone */}
               {config?.business_mode === "multi" && (
-                <div className="space-y-2 pt-2">
-                  <h5 className="text-[10px] font-extrabold text-neutral-gray-400 uppercase tracking-wider">
+                <div className="pt-2">
+                  <h5 className="text-[10px] font-extrabold text-neutral-gray-900 uppercase tracking-wider mb-2.5">
                     Vendor Zone
                   </h5>
                   <div className="grid grid-cols-2 gap-2">
@@ -367,271 +326,157 @@ export default function Footer() {
                   <h5 className="text-xs font-extrabold text-neutral-gray-900 uppercase tracking-wider">
                     Quick Links
                   </h5>
-                  <ul className="space-y-2">
+                  <ul className="space-y-2.5">
+                    {businessPagesDefault1.map((page: any) => (
+                      <li key={page.slug}>
+                        <Link
+                          href={`/page/${page.slug}`}
+                          className="text-xs text-neutral-gray-500 hover:text-primary-600 transition-all font-medium"
+                        >
+                          {page.name}
+                        </Link>
+                      </li>
+                    ))}
                     <li>
                       <Link
-                        href={isLoggedIn ? "/profile" : "/login"}
-                        className="text-xs text-neutral-gray-500 hover:text-primary-600 transition-colors"
+                        href="/vendors"
+                        className="text-xs text-neutral-gray-500 hover:text-primary-600 transition-all font-medium"
                       >
-                        Profile Info
+                        All Vendors / Shops
                       </Link>
                     </li>
-                    <li>
-                      <Link
-                        href="/profile/wishlist"
-                        className="text-xs text-neutral-gray-500 hover:text-primary-600 transition-colors"
-                      >
-                        Wish List
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        href="/flash-deals"
-                        className="text-xs text-neutral-gray-500 hover:text-primary-600 transition-colors"
-                      >
-                        Flash Deal
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        href="/products/featured"
-                        className="text-xs text-neutral-gray-500 hover:text-primary-600 transition-colors"
-                      >
-                        Featured Products
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        href="/products/best-sellers"
-                        className="text-xs text-neutral-gray-500 hover:text-primary-600 transition-colors"
-                      >
-                        Best Selling Products
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        href="/products/latest"
-                        className="text-xs text-neutral-gray-500 hover:text-primary-600 transition-colors"
-                      >
-                        Latest Products
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        href="/products/top-rated"
-                        className="text-xs text-neutral-gray-500 hover:text-primary-600 transition-colors"
-                      >
-                        Top Rated Products
-                      </Link>
-                    </li>
+                  </ul>
+                </div>
+
+                {/* Information Links */}
+                <div className="sm:col-span-4 space-y-4">
+                  <h5 className="text-xs font-extrabold text-neutral-gray-900 uppercase tracking-wider">
+                    Information
+                  </h5>
+                  <ul className="space-y-2.5">
+                    {businessPagesDefault0.map((page: any) => (
+                      <li key={page.slug}>
+                        <Link
+                          href={`/page/${page.slug}`}
+                          className="text-xs text-neutral-gray-500 hover:text-primary-600 transition-all font-medium"
+                        >
+                          {page.name}
+                        </Link>
+                      </li>
+                    ))}
                     <li>
                       <Link
                         href="/track-order"
-                        className="text-xs text-neutral-gray-500 hover:text-primary-600 transition-colors"
+                        className="text-xs text-neutral-gray-500 hover:text-primary-600 transition-all font-medium"
                       >
-                        Track Order
+                        Track Order Status
                       </Link>
                     </li>
                   </ul>
                 </div>
 
-                {/* Other Pages */}
-                <div className="sm:col-span-4 space-y-4">
-                  <h5 className="text-xs font-extrabold text-neutral-gray-900 uppercase tracking-wider">
-                    Other
-                  </h5>
-                  <ul className="space-y-2">
-                    <li>
-                      <Link
-                        href="/about-us"
-                        className="text-xs text-neutral-gray-500 hover:text-primary-600 transition-colors block"
-                      >
-                        About Us
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        href="/page/terms"
-                        className="text-xs text-neutral-gray-500 hover:text-primary-600 transition-colors block"
-                      >
-                        Terms And Conditions
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        href="/page/privacy-policy"
-                        className="text-xs text-neutral-gray-500 hover:text-primary-600 transition-colors block"
-                      >
-                        Privacy Policy
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        href="/page/return-policy"
-                        className="text-xs text-neutral-gray-500 hover:text-primary-600 transition-colors block"
-                      >
-                        Return Policy
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        href="/page/cancellation-policy"
-                        className="text-xs text-neutral-gray-500 hover:text-primary-600 transition-colors block"
-                      >
-                        Cancellation Policy
-                      </Link>
-                    </li>
-                  </ul>
-                </div>
-
-                {/* Newsletter subscription */}
-                <div className="sm:col-span-4 space-y-4">
+                {/* Newsletter Subscription */}
+                <div className="col-span-2 sm:col-span-4 space-y-4">
                   <h5 className="text-xs font-extrabold text-neutral-gray-900 uppercase tracking-wider">
                     Newsletter
                   </h5>
-                  <p className="text-xs text-neutral-gray-500 leading-relaxed">
-                    Subscribe to our channel to get latest updates.
+                  <p className="text-xs text-neutral-gray-500 leading-relaxed font-medium">
+                    Subscribe to receive the latest updates, special deals, and new arrivals.
                   </p>
-                  <form onSubmit={handleSubscribe} className="space-y-2 relative">
-                    <div className="flex flex-col sm:flex-row gap-2.5">
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Your Email Address"
-                        className="w-full px-3.5 py-2.5 text-xs border border-neutral-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-primary-600 bg-neutral-white font-medium"
-                        required
-                      />
-                      <button
-                        type="submit"
-                        disabled={subscribing}
-                        className="w-full sm:w-auto px-5 py-2.5 bg-primary-600 hover:bg-primary-800 text-neutral-white rounded-xl text-xs font-bold transition-all disabled:opacity-50 flex items-center justify-center shrink-0 cursor-pointer"
-                      >
-                        {subscribing ? "..." : "Subscribe"}
-                      </button>
-                    </div>
-                    {subscribedMsg && (
-                      <p className="text-[10px] text-green-600 font-semibold absolute -bottom-5 left-1">
-                        {subscribedMsg}
-                      </p>
-                    )}
-                  </form>
+                  <FooterSubscribeForm />
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Address and Contacts block */}
-          <div className="mt-12 pt-8 border-t border-neutral-gray-200/40 grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-            {/* Start Conversation */}
-            <div className="md:col-span-5 space-y-3">
-              <h5 className="text-xs font-extrabold text-neutral-gray-900 uppercase tracking-wider">
-                Start a Conversation
-              </h5>
-              <div className="space-y-2">
-                <a
-                  href={`tel:${config?.company_phone || ""}`}
-                  className="flex items-center gap-2 text-xs text-neutral-gray-500 hover:text-primary-600 transition-colors w-max"
-                >
-                  <Phone size={14} className="text-primary-600" />
-                  <span className="font-semibold">{config?.company_phone || "Call Support"}</span>
-                </a>
-                <a
-                  href={`mailto:${config?.company_email || ""}`}
-                  className="flex items-center gap-2 text-xs text-neutral-gray-500 hover:text-primary-600 transition-colors w-max"
-                >
-                  <Mail size={14} className="text-primary-600" />
-                  <span className="font-semibold">{config?.company_email || "Email Support"}</span>
-                </a>
-                <Link
-                  href={isLoggedIn ? "/profile/support" : "/login"}
-                  className="flex items-center gap-2 text-xs text-neutral-gray-500 hover:text-primary-600 transition-colors w-max"
-                >
-                  <UserCheck size={14} className="text-primary-600" />
-                  <span className="font-semibold">Support Ticket</span>
-                </Link>
-              </div>
-            </div>
-
-            {/* Address */}
-            <div className="md:col-span-4 space-y-3">
-              <h5 className="text-xs font-extrabold text-neutral-gray-900 uppercase tracking-wider">
-                Address
-              </h5>
-              <div className="flex items-start gap-2 text-xs text-neutral-gray-500">
-                <MapPin size={14} className="text-primary-600 mt-0.5 shrink-0" />
-                <p className="font-medium leading-relaxed">
-                  {config?.shop_address || "Company Location Address"}
-                </p>
-              </div>
-            </div>
-
-            {/* Social icons */}
-            <div className="md:col-span-3">
-              <div className="flex flex-wrap gap-2 justify-start md:justify-end">
-                {socialMedia.map((item: any, idx: number) => {
-                  const name = item.name.toLowerCase();
-                  let IconComponent: React.ComponentType<any> = Link2;
-
-                  if (name.includes("facebook")) {
-                    IconComponent = Facebook;
-                  } else if (name.includes("twitter") || name.includes("x")) {
-                    IconComponent = Twitter;
-                  } else if (name.includes("instagram")) {
-                    IconComponent = Instagram;
-                  } else if (name.includes("linkedin")) {
-                    IconComponent = Linkedin;
-                  } else if (name.includes("youtube")) {
-                    IconComponent = Youtube;
-                  } else if (name.includes("pinterest")) {
-                    IconComponent = Pinterest;
-                  } else if (
-                    name.includes("google") ||
-                    name.includes("gplus") ||
-                    name.includes("googleplus") ||
-                    name.includes("google-plus")
-                  ) {
-                    IconComponent = GooglePlus;
-                  }
-
-                  return (
+              {/* Contact Information & App download blocks */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-10 mt-10 border-t border-neutral-gray-200/50">
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 rounded-xl bg-primary-50 flex items-center justify-center text-primary-600 shrink-0">
+                    <Phone size={14} />
+                  </div>
+                  <div>
+                    <h6 className="text-[10px] font-extrabold text-neutral-gray-400 uppercase tracking-wider mb-0.5">
+                      Hotline Number
+                    </h6>
                     <a
-                      key={idx}
-                      href={item.link}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="w-8 h-8 rounded-full border border-neutral-gray-200/60 bg-neutral-white flex items-center justify-center text-neutral-gray-600 hover:bg-primary-600 hover:border-primary-600 hover:text-neutral-white transition-all duration-200"
+                      href={`tel:${config?.company_phone}`}
+                      className="text-xs font-extrabold text-neutral-gray-800 hover:text-primary-600 transition-colors"
                     >
-                      <IconComponent size={14} />
+                      {config?.company_phone || "Support line unavailable"}
                     </a>
-                  );
-                })}
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 rounded-xl bg-primary-50 flex items-center justify-center text-primary-600 shrink-0">
+                    <Mail size={14} />
+                  </div>
+                  <div>
+                    <h6 className="text-[10px] font-extrabold text-neutral-gray-400 uppercase tracking-wider mb-0.5">
+                      Email Address
+                    </h6>
+                    <a
+                      href={`mailto:${config?.company_email}`}
+                      className="text-xs font-extrabold text-neutral-gray-800 hover:text-primary-600 transition-colors"
+                    >
+                      {config?.company_email || "mail@company.com"}
+                    </a>
+                  </div>
+                </div>
+
+                {showAppSection && (
+                  <div className="flex flex-col space-y-2">
+                    <h6 className="text-[10px] font-extrabold text-neutral-gray-400 uppercase tracking-wider">
+                      Download Apps
+                    </h6>
+                    <div className="flex gap-2">
+                      {showIos && (
+                        <a
+                          href={config.ios?.link || "#"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:opacity-85 transition-opacity"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg"
+                            alt="App Store"
+                            className="h-8"
+                          />
+                        </a>
+                      )}
+                      {showAndroid && (
+                        <a
+                          href={config.android?.link || "#"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:opacity-85 transition-opacity"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg"
+                            alt="Google Play"
+                            className="h-8"
+                          />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Copyright text bar */}
-        <div className="bg-primary-100/20 py-4 border-t border-primary-100/30">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-3">
-            <p className="text-[11px] text-neutral-gray-500 font-medium">
-              {config?.copyright_text ||
-                `© ${new Date().getFullYear()} ShopSphere. All rights reserved.`}
+          {/* Copyright Section */}
+          <div className="border-t border-neutral-gray-200/50 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-[10px] text-neutral-gray-500 font-bold">
+              © {new Date().getFullYear()} {config?.company_name || "ShopSphere"}. All rights reserved.
             </p>
-            {businessPagesDefault0.length > 0 && (
-              <ul className="flex flex-wrap gap-4">
-                {businessPagesDefault0.map((page: any, idx: number) => (
-                  <li key={idx}>
-                    <Link
-                      href={`/page/${page.slug}`}
-                      className="text-[11px] text-neutral-gray-400 hover:text-primary-600 transition-colors"
-                    >
-                      {page.title}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <div className="flex items-center space-x-2 text-[10px] text-neutral-gray-400 font-bold">
+              <span>Powered by</span>
+              <span className="text-neutral-gray-800 font-black tracking-wider uppercase">
+                ShopSphere Core
+              </span>
+            </div>
           </div>
         </div>
       </footer>

@@ -8,43 +8,67 @@ import { ChevronDown, ChevronRight, Gift, Percent, Heart, Loader2, Store } from 
 
 export default function Sidebar() {
   const router = useRouter();
-  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
   const [hasDiscounted, setHasDiscounted] = useState(false);
   const [businessMode, setBusinessMode] = useState<string>('multi');
-  const { selectedCategoryId, setSelectedCategory, setSearchQuery, isSidebarOpen, setSidebarOpen } = useAppStore();
+
+  const {
+    selectedCategoryId,
+    setSelectedCategory,
+    setSearchQuery,
+    isSidebarOpen,
+    setSidebarOpen,
+    // Global cache
+    categories: storeCategories,
+    categoriesLoaded,
+    setCategories: setStoreCategories,
+    siteConfig,
+    configLoaded,
+  } = useAppStore();
+
+  // Use store categories if already loaded, otherwise fetch once and save
+  const categories = storeCategories;
 
   useEffect(() => {
     async function loadData() {
-      try {
-        const data = await api.getCategories();
-        setCategories(data);
-      } catch (err) {
-        console.error('Failed to load categories', err);
-      } finally {
-        setLoading(false);
+      const fetchCats = categoriesLoaded
+        ? Promise.resolve(storeCategories)
+        : api.getCategories().then((data) => { setStoreCategories(data); return data; });
+
+      const fetchDiscount = api.getDiscountedProducts(1, 1).catch(() => null);
+
+      const [catsResult, discountResult] = await Promise.allSettled([fetchCats, fetchDiscount]);
+
+      if (catsResult.status === 'rejected') {
+        console.error('Failed to load categories', catsResult.reason);
       }
 
-      try {
-        const res = await api.getDiscountedProducts(1, 1);
-        if (res?.products && res.products.length > 0) {
-          setHasDiscounted(true);
-        }
-      } catch (err) {
-        console.error('Failed to check discounted products', err);
+      if (
+        discountResult.status === 'fulfilled' &&
+        discountResult.value &&
+        typeof discountResult.value === 'object' &&
+        'products' in discountResult.value &&
+        Array.isArray((discountResult.value as any).products) &&
+        (discountResult.value as any).products.length > 0
+      ) {
+        setHasDiscounted(true);
       }
 
-      try {
-        const config = await api.getConfig();
-        if (config?.business_mode) {
-          setBusinessMode(config.business_mode);
-        }
-      } catch (err) {
-        console.error('Failed to load config', err);
+      // Read business_mode from the store if already fetched by Header;
+      // otherwise fall back to a direct config read (still cached by api.ts)
+      if (configLoaded && siteConfig?.business_mode) {
+        setBusinessMode(siteConfig.business_mode);
+      } else {
+        api.getConfig().then((config) => {
+          if (config?.business_mode) setBusinessMode(config.business_mode);
+        }).catch(() => {});
       }
+
+      setLoading(false);
     }
     loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggleExpand = (id: number, e: React.MouseEvent) => {

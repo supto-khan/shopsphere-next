@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Product, CustomerLogin } from './api';
+import { Product, Category, CustomerLogin } from './api';
 
 export interface CartItem {
   product: Product;
@@ -49,6 +49,19 @@ interface AppStore {
   customerName: string | null;
   customerImage: string | null;
   setCustomerInfo: (name: string | null, image: string | null) => void;
+
+  // ── Global cache: config + categories ─────────────────────────────────────
+  // Populated once by the first component that fetches them.
+  // Every other component reads from the store instead of firing a new HTTP
+  // request — eliminating the 7+ duplicate getConfig() calls per page load.
+  siteConfig: any | null;
+  configLoaded: boolean;
+  setSiteConfig: (config: any) => void;
+
+  categories: Category[];
+  categoriesLoaded: boolean;
+  setCategories: (cats: Category[]) => void;
+  // ──────────────────────────────────────────────────────────────────────────
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
@@ -91,7 +104,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     return get().cart.reduce((sum, item) => {
       const price = item.product.unit_price;
       const discount = item.product.discount || 0;
-      const finalPrice = item.product.discount_type === 'amount' 
+      const finalPrice = item.product.discount_type === 'amount' || item.product.discount_type === 'flat'
         ? Math.max(0, price - discount)
         : Math.max(0, price - (price * discount) / 100);
       return sum + finalPrice * item.quantity;
@@ -138,4 +151,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
   customerName: null,
   customerImage: null,
   setCustomerInfo: (name, image) => set({ customerName: name, customerImage: image }),
+
+  // Global config + categories cache
+  siteConfig: null,
+  configLoaded: false,
+  setSiteConfig: (config) => set({ siteConfig: config, configLoaded: true }),
+
+  categories: [],
+  categoriesLoaded: false,
+  setCategories: (cats) => set({ categories: cats, categoriesLoaded: true }),
 }));

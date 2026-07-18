@@ -149,8 +149,12 @@ export default function VendorRegisterPage() {
         formData.append('tin_certificate', tinFile);
       }
 
-      await api.registerVendor(formData);
-      setSuccess(true);
+      const res = await api.registerVendor(formData);
+      if (res && res.success === false) {
+        setErrorMsg(res.error || 'An error occurred during registration. Please try again.');
+      } else {
+        setSuccess(true);
+      }
     } catch (err: any) {
       setErrorMsg(err.message || 'An error occurred during registration. Please try again.');
     } finally {

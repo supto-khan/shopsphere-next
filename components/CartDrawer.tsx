@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
-import { api } from '@/lib/api';
 import { ShoppingBag, X, Plus, Minus, Trash2, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { resolveImage } from '@/lib/image';
+import { useRouter } from 'next/navigation';
 
 export default function CartDrawer() {
   const {
@@ -15,17 +15,29 @@ export default function CartDrawer() {
     updateQuantity,
     removeFromCart,
     getCartSubtotal,
-    getCartItemCount
+    getCartItemCount,
+    siteConfig,
+    isLoggedIn,
+    setLoginOpen,
   } = useAppStore();
+  const router = useRouter();
+
+  const handleCheckout = (e: React.MouseEvent) => {
+    e.preventDefault();
+    toggleCart();
+    if (!isLoggedIn) {
+      localStorage.setItem('post_login_redirect', '/checkout/shipping');
+      setLoginOpen(true);
+    } else {
+      router.push('/checkout/shipping');
+    }
+  };
 
   const subtotal = getCartSubtotal();
   const itemCount = getCartItemCount();
 
-  // Load configuration from backend dynamically
-  const [config, setConfig] = useState<any>(null);
-  useEffect(() => {
-    api.getConfig().then(setConfig).catch(() => {});
-  }, []);
+  // Read config directly from the global store — no API call needed
+  const config = siteConfig;
 
   const freeShippingStatus = config?.free_delivery_status === 1 || Number(config?.free_delivery_status) === 1;
   const shippingThreshold = Number(config?.free_delivery_over_amount) || 400;
@@ -125,7 +137,7 @@ export default function CartDrawer() {
             ) : (
               cart.map((item) => {
                 const discount = item.product.discount || 0;
-                const finalPrice = item.product.discount_type === 'amount'
+                const finalPrice = item.product.discount_type === 'amount' || item.product.discount_type === 'flat'
                   ? Math.max(0, item.product.unit_price - discount)
                   : Math.max(0, item.product.unit_price - (item.product.unit_price * discount) / 100);
 
@@ -196,10 +208,10 @@ export default function CartDrawer() {
                 </div>
               </div>
 
-              <Link href="/checkout/shipping" onClick={toggleCart} className="w-full py-3.5 bg-primary-600 hover:bg-primary-800 text-neutral-white font-bold rounded-xl shadow-xl shadow-primary-600/10 flex items-center justify-center space-x-2 active:scale-[0.98] transition-all cursor-pointer">
+              <button onClick={handleCheckout} className="w-full py-3.5 bg-primary-600 hover:bg-primary-800 text-neutral-white font-bold rounded-xl shadow-xl shadow-primary-600/10 flex items-center justify-center space-x-2 active:scale-[0.98] transition-all cursor-pointer border-0">
                 <span>Proceed to Checkout</span>
                 <ArrowRight size={16} />
-              </Link>
+              </button>
             </div>
           )}
         </div>

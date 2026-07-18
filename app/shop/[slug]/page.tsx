@@ -64,7 +64,7 @@ const ProductSkeleton = () => (
 export default function ShopViewPage() {
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
-  const { isLoggedIn } = useAppStore();
+  const { isLoggedIn, categories: storeCategories, categoriesLoaded, setCategories: setStoreCategories } = useAppStore();
 
   const [shopInfo, setShopInfo]       = useState<any>(null);
   const [shopLoading, setShopLoading] = useState(true);
@@ -78,7 +78,7 @@ export default function ShopViewPage() {
   const pageRef = useRef(1);
 
   // Search & Filter metadata
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<Category[]>(storeCategories);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [authors, setAuthors] = useState<any[]>([]);
   const [publishers, setPublishers] = useState<any[]>([]);
@@ -114,11 +114,17 @@ export default function ShopViewPage() {
   // Fetch filter metadata on mount
   useEffect(() => {
     let active = true;
-    api.getCategories().then((data) => { if (active) setCategories(data); }).catch(() => {});
+
+    const fetchCats = categoriesLoaded
+      ? Promise.resolve(storeCategories)
+      : api.getCategories().then((data) => { setStoreCategories(data); return data; });
+
+    fetchCats.then((data) => { if (active) setCategories(data); }).catch(() => {});
     api.getBrands().then((data) => { if (active) setBrands(data); }).catch(() => {});
     api.getAuthors().then((data) => { if (active) setAuthors(data); }).catch(() => {});
     api.getPublishingHouses().then((data) => { if (active) setPublishers(data); }).catch(() => {});
     return () => { active = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Set up child-to-parent category mappings

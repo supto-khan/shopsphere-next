@@ -1,4 +1,4 @@
-export const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+export const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://shopsphere.prosolverhq.com';
 const API_URL = typeof window !== 'undefined' ? '/api/v1' : `${BACKEND_URL}/api/v1`;
 
 export interface Category {
@@ -110,31 +110,113 @@ export interface OrderListResponse {
   orders: Order[];
 }
 
+// In-flight promise for guest ID — ensures only ONE get-guest-id HTTP request
+// fires no matter how many API calls are made simultaneously on first visit.
+let _guestIdInflight: Promise<string | null> | null = null;
+
 // Helper to get or retrieve guest ID
 async function getGuestId(): Promise<string | null> {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === 'undefined') {
+    try {
+      const { cookies } = await import('next/headers');
+      const cookieStore = await cookies();
+      const guestCookie = cookieStore.get('shopsphere_guest_id')?.value;
+      if (guestCookie) return guestCookie;
 
-  let id = localStorage.getItem('shopsphere_guest_id');
-  if (id) return id;
-
-  try {
-    const res = await fetch(`${API_URL}/get-guest-id`, {
-      headers: {
-        'Accept': 'application/json',
+      // If no cookie, fetch a guest_id from backend
+      const res = await fetch(`${BACKEND_URL}/api/v1/get-guest-id`, {
+        headers: { 'Accept': 'application/json' },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.guest_id) {
+          return String(data.guest_id);
+        }
       }
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data?.guest_id) {
-        localStorage.setItem('shopsphere_guest_id', String(data.guest_id));
-        return String(data.guest_id);
-      }
+    } catch (err) {
+      console.error('Failed to get guest ID on server', err);
     }
-  } catch (err) {
-    console.error('Failed to get guest ID', err);
+    return null;
   }
-  return null;
+
+  // Fast path: already in localStorage
+  const stored = localStorage.getItem('shopsphere_guest_id');
+  if (stored) return stored;
+
+  // Deduplicate concurrent callers — share one in-flight request
+  if (_guestIdInflight) return _guestIdInflight;
+
+  _guestIdInflight = fetch(`${API_URL}/get-guest-id`, {
+    headers: { 'Accept': 'application/json' },
+  })
+    .then((res) => (res.ok ? res.json() : null))
+    .then((data) => {
+      if (data?.guest_id) {
+        const gid = String(data.guest_id);
+        localStorage.setItem('shopsphere_guest_id', gid);
+        // Also save to cookie if possible so server is in sync
+        document.cookie = `shopsphere_guest_id=${gid}; max-age=${60 * 60 * 24 * 365}; path=/`;
+        return gid;
+      }
+      return null;
+    })
+    .catch((err) => {
+      console.error('Failed to get guest ID', err);
+      return null;
+    })
+    .finally(() => {
+      _guestIdInflight = null;
+    });
+
+  return _guestIdInflight;
 }
+
+// ─── Request-level cache ──────────────────────────────────────────────────────
+// Prevents duplicate HTTP requests when multiple components call the same
+// read-only endpoint simultaneously (e.g. getConfig, getBanners, getCategories).
+//
+// Two layers:
+//   1. In-flight deduplication – concurrent callers share the same Promise.
+//   2. Short TTL cache (60 s)  – subsequent calls within the TTL skip the network.
+
+const CACHE_TTL_MS = 60_000; // 60 seconds
+
+interface CacheEntry<T> {
+  data: T;
+  expiresAt: number;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const _cache = new Map<string, CacheEntry<any>>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const _inflight = new Map<string, Promise<any>>();
+
+async function cachedFetch<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+  // 1. Return cached result if still fresh
+  const cached = _cache.get(key) as CacheEntry<T> | undefined;
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.data;
+  }
+
+  // 2. Deduplicate in-flight requests
+  if (_inflight.has(key)) {
+    return _inflight.get(key) as Promise<T>;
+  }
+
+  // 3. Fire the real request, store the promise for deduplication
+  const promise = fetcher().then((data) => {
+    _cache.set(key, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+    _inflight.delete(key);
+    return data;
+  }).catch((err) => {
+    _inflight.delete(key);
+    throw err;
+  });
+
+  _inflight.set(key, promise);
+  return promise;
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Fetch helper with standard headers
 async function apiFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -489,8 +571,55 @@ export const api = {
     return apiFetch<any>(`/customer/order/place?${qs}`);
   },
 
+  getCartList: async (): Promise<any[]> => {
+    return apiFetch<any[]>('/cart');
+  },
+
+  syncCart: async (cartItems: { product: any; quantity: number }[]): Promise<any> => {
+    try {
+      await apiFetch<any>('/cart/remove-all', {
+        method: 'DELETE',
+        body: JSON.stringify({ key: 'all' }),
+      });
+      for (const item of cartItems) {
+        const res = await apiFetch<any>('/cart/add', {
+          method: 'POST',
+          body: JSON.stringify({
+            id: item.product.id,
+            quantity: item.quantity,
+          }),
+        });
+        if (res && res.status === 0) {
+          return { success: false, error: res.message || `Failed to sync ${item.product.name} with server cart.` };
+        }
+      }
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to sync cart' };
+    }
+  },
+
   getOfflinePaymentMethods: async (): Promise<any> => {
     return apiFetch<any>('/customer/order/offline-payment-method-list');
+  },
+
+  getShippingMethods: async (): Promise<any[]> => {
+    return apiFetch<any[]>('/shipping-method/check-shipping-type');
+  },
+
+  getShippingMethodsBySeller: async (sellerId: number, sellerIs: string): Promise<any[]> => {
+    return apiFetch<any[]>(`/shipping-method/by-seller/${sellerId}/${sellerIs}`);
+  },
+
+  chooseShippingMethod: async (payload: { cart_group_id: string; id: number }): Promise<any> => {
+    return apiFetch<any>('/shipping-method/choose-for-order', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+
+  getChosenShippingMethods: async (): Promise<any[]> => {
+    return apiFetch<any[]>('/shipping-method/chosen');
   },
 
   placeOfflineOrder: async (payload: any): Promise<any> => {
@@ -549,27 +678,27 @@ export const api = {
 
   // Latest products
   getLatestProducts: async (): Promise<Product[]> => {
-    return apiFetch<any>('/products/latest').then(extractProducts);
+    return cachedFetch('products/latest', () => apiFetch<any>('/products/latest').then(extractProducts));
   },
 
   // New arrivals
   getNewArrivals: async (): Promise<Product[]> => {
-    return apiFetch<any>('/products/new-arrival').then(extractProducts);
+    return cachedFetch('products/new-arrival', () => apiFetch<any>('/products/new-arrival').then(extractProducts));
   },
 
   // Top/Best Sellings
   getTopSellers: async (): Promise<Product[]> => {
-    return apiFetch<any>('/products/best-sellings').then(extractProducts);
+    return cachedFetch('products/best-sellings', () => apiFetch<any>('/products/best-sellings').then(extractProducts));
   },
 
   // Featured/Recommended Products
   getFeaturedProducts: async (): Promise<Product[]> => {
-    return apiFetch<any>('/products/featured').then(extractProducts);
+    return cachedFetch('products/featured', () => apiFetch<any>('/products/featured').then(extractProducts));
   },
 
   // Top Rated Products
   getTopRatedProducts: async (): Promise<Product[]> => {
-    return apiFetch<any>('/products/top-rated').then(extractProducts);
+    return cachedFetch('products/top-rated', () => apiFetch<any>('/products/top-rated').then(extractProducts));
   },
   
   // Discounted Products
@@ -582,12 +711,12 @@ export const api = {
 
   // Brands
   getBrands: async (): Promise<Brand[]> => {
-    return apiFetch<any>('/brands').then(extractBrands);
+    return cachedFetch('brands', () => apiFetch<any>('/brands').then(extractBrands));
   },
 
   // Top Sellers (Shops)
   getTopShops: async (): Promise<any[]> => {
-    return apiFetch<any>('/seller/list/top').then((res) => res.sellers || []);
+    return cachedFetch('seller/list/top', () => apiFetch<any>('/seller/list/top').then((res) => res.sellers || []));
   },
 
   // Get all sellers with filtering
@@ -624,7 +753,7 @@ export const api = {
 
   // Categories
   getCategories: async (): Promise<Category[]> => {
-    return apiFetch<Category[]>('/categories');
+    return cachedFetch('categories', () => apiFetch<Category[]>('/categories'));
   },
 
   // Product details (mirrors Blade details.blade.php data source)
@@ -748,12 +877,12 @@ export const api = {
   },
 
   getConfig: async (): Promise<any> => {
-    return apiFetch<any>('/config');
+    return cachedFetch('config', () => apiFetch<any>('/config'));
   },
 
   // Banners list
   getBanners: async (): Promise<any[]> => {
-    return apiFetch<any[]>('/banners');
+    return cachedFetch('banners', () => apiFetch<any[]>('/banners'));
   },
 
   // Customer profile
@@ -781,6 +910,13 @@ export const api = {
     });
   },
 
+  checkEmail: async (email: string): Promise<AuthResponse> => {
+    return apiFetch<AuthResponse>('/auth/check-email', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
   verifyOTP: async (phone: string, token: string): Promise<AuthResponse> => {
     return apiFetch<AuthResponse>('/auth/verify-otp', {
       method: 'POST',
@@ -788,24 +924,49 @@ export const api = {
     });
   },
 
-  registerVendor: async (formData: FormData): Promise<any> => {
-    const res = await fetch(`${BACKEND_URL}/api/v3/seller/registration`, {
+  registerCustomer: async (payload: any): Promise<AuthResponse> => {
+    return apiFetch<AuthResponse>('/auth/register', {
       method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'X-Localization': 'en',
-      },
-      body: formData,
+      body: JSON.stringify(payload),
     });
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      // Check if message is array of errors (e.g. from failedValidation ResponseHandler)
-      const errorMsg = Array.isArray(errData.message)
-        ? errData.message.map((e: any) => e.message).join('\n')
-        : (errData.message || errData.error || 'Failed to register vendor');
-      throw new Error(errorMsg);
+  },
+
+  verifyPhone: async (phone: string, token: string): Promise<AuthResponse> => {
+    return apiFetch<AuthResponse>('/auth/verify-phone', {
+      method: 'POST',
+      body: JSON.stringify({ phone, token }),
+    });
+  },
+
+  verifyEmail: async (email: string, token: string): Promise<AuthResponse> => {
+    return apiFetch<AuthResponse>('/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ email, token }),
+    });
+  },
+
+  registerVendor: async (formData: FormData): Promise<any> => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/v3/seller/registration`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'X-Localization': 'en',
+        },
+        body: formData,
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        // Check if message is array of errors (e.g. from failedValidation ResponseHandler)
+        const errorMsg = Array.isArray(errData.message)
+          ? errData.message.map((e: any) => e.message).join('\n')
+          : (errData.message || errData.error || 'Failed to register vendor');
+        return { success: false, error: errorMsg };
+      }
+      return await res.json();
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to register vendor' };
     }
-    return res.json();
   },
 
   getBlogList: async (params?: { search?: string; category?: string; writer?: string; page?: number }): Promise<BlogListResponse> => {
