@@ -112,7 +112,7 @@ export default function TrackOrderPage() {
         {/* Search Card */}
         <div className="bg-neutral-white border border-neutral-gray-200/60 rounded-3xl p-6 sm:p-8 shadow-xl shadow-neutral-gray-100/30 mb-8">
           <div className="text-center max-w-md mx-auto mb-8">
-            <h2 className="text-2xl font-black text-neutral-gray-900 tracking-tight">Track Your Order</h2>
+            <h1 className="text-2xl font-black text-neutral-gray-900 tracking-tight">Track Your Order</h1>
             <p className="text-xs text-neutral-gray-500 font-semibold mt-1">
               Enter your Order ID and the phone number used at checkout to get real-time delivery updates.
             </p>
@@ -176,7 +176,7 @@ export default function TrackOrderPage() {
             <div className="bg-neutral-white border border-neutral-gray-200/60 rounded-3xl p-6 shadow-md flex flex-wrap gap-4 items-center justify-between">
               <div>
                 <span className="text-[10px] font-bold text-neutral-gray-400 uppercase tracking-widest">Order Reference</span>
-                <h3 className="text-lg font-black text-neutral-gray-900 mt-0.5">#{orderInfo.id}</h3>
+                <h2 className="text-lg font-black text-neutral-gray-900 mt-0.5">#{orderInfo.id}</h2>
               </div>
 
               <div className="flex gap-6 flex-wrap">
@@ -218,7 +218,7 @@ export default function TrackOrderPage() {
             {/* Tracking Progress Timeline Card */}
             {orderInfo.order_status !== 'canceled' && orderInfo.order_status !== 'failed' && (
               <div className="bg-neutral-white border border-neutral-gray-200/60 rounded-3xl p-6 sm:p-8 shadow-md">
-                <h4 className="text-sm font-black text-neutral-gray-900 uppercase tracking-wider mb-8">Delivery Timeline</h4>
+                <h3 className="text-sm font-black text-neutral-gray-900 uppercase tracking-wider mb-8">Delivery Timeline</h3>
 
                 <div className="relative flex flex-col md:flex-row justify-between items-start md:items-center gap-8 md:gap-0 mt-4">
                   {/* Timeline progress line background (for desktop) */}
@@ -256,9 +256,9 @@ export default function TrackOrderPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Shipping Address Column */}
               <div className="md:col-span-1 bg-neutral-white border border-neutral-gray-200/60 rounded-3xl p-6 shadow-md space-y-4">
-                <h4 className="text-sm font-black text-neutral-gray-900 uppercase tracking-wider border-b border-neutral-gray-200/50 pb-2.5 flex items-center gap-1.5">
+                <h3 className="text-sm font-black text-neutral-gray-900 uppercase tracking-wider border-b border-neutral-gray-200/50 pb-2.5 flex items-center gap-1.5">
                   <MapPin size={15} className="text-neutral-gray-400" /> Shipping Info
-                </h4>
+                </h3>
                 {shippingAddress ? (
                   <div className="text-xs font-semibold text-neutral-gray-700 space-y-2 leading-relaxed">
                     <p className="font-extrabold text-neutral-gray-900">{shippingAddress.contact_person_name}</p>
@@ -273,9 +273,9 @@ export default function TrackOrderPage() {
 
               {/* Items List Column */}
               <div className="md:col-span-2 bg-neutral-white border border-neutral-gray-200/60 rounded-3xl p-6 shadow-md space-y-4">
-                <h4 className="text-sm font-black text-neutral-gray-900 uppercase tracking-wider border-b border-neutral-gray-200/50 pb-2.5">
+                <h3 className="text-sm font-black text-neutral-gray-900 uppercase tracking-wider border-b border-neutral-gray-200/50 pb-2.5">
                   Order Items
-                </h4>
+                </h3>
                 <div className="divide-y divide-neutral-gray-150/60">
                   {details.map((item) => {
                     const src = resolveStorageImage(item?.product_details?.thumbnail_full_url?.path);
@@ -288,9 +288,9 @@ export default function TrackOrderPage() {
                           className="w-14 h-14 rounded-xl border border-neutral-gray-200/40 object-cover shrink-0"
                         />
                         <div className="min-w-0 flex-1">
-                          <h5 className="text-xs font-bold text-neutral-gray-800 line-clamp-2 leading-snug">
+                          <h4 className="text-xs font-bold text-neutral-gray-800 line-clamp-2 leading-snug">
                             {item.product_details?.name}
-                          </h5>
+                          </h4>
                           {item.variation && (
                             <span className="text-[10px] text-neutral-gray-400 font-bold block mt-0.5">
                               {typeof item.variation === 'string' ? item.variation : JSON.stringify(item.variation)}

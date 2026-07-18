@@ -49,7 +49,7 @@ function TrackContent({ order, orderId }: OrderShellContext) {
         setHistory(data?.history || {});
         setIsDigital(!!data?.is_digital_order);
       })
-      .catch((err) => console.error('Failed to load track history', err))
+      .catch((err) => {})
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [orderId]);
@@ -106,9 +106,9 @@ function TrackContent({ order, orderId }: OrderShellContext) {
                   </span>
                   <div className="flex items-start justify-between gap-3 pt-0.5">
                     <div className="space-y-1">
-                      <h6 className={`text-xs font-extrabold capitalize transition-colors ${active ? 'text-neutral-gray-900' : 'text-neutral-gray-400'}`}>
+                      <div className={`text-xs font-extrabold capitalize transition-colors ${active ? 'text-neutral-gray-900' : 'text-neutral-gray-400'}`}>
                         {data?.label || key.replace(/_/g, ' ')}
-                      </h6>
+                      </div>
                       {data?.date_time && (
                         <span className="block text-[10px] font-bold text-neutral-400">{formatTrackDate(data.date_time)}</span>
                       )}

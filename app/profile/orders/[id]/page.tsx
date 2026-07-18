@@ -178,8 +178,8 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-neutral-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose}>
       <div className="bg-neutral-white rounded-3xl w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl border border-neutral-gray-200/30" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4.5 border-b border-neutral-gray-100 bg-neutral-gray-50/20">
-          <h3 className="text-sm font-extrabold text-neutral-gray-900 tracking-tight">{title}</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-neutral-gray-100 flex items-center justify-center text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer"><X size={16} /></button>
+          <h2 className="text-sm font-extrabold text-neutral-gray-900 tracking-tight">{title}</h2>
+          <button onClick={onClose} aria-label="Close modal" className="w-12 h-12 rounded-full hover:bg-neutral-gray-100 flex items-center justify-center text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer"><X size={16} /></button>
         </div>
         <div className="p-6">{children}</div>
       </div>
@@ -215,7 +215,7 @@ function OrderDetailsContent() {
       if (!list.length) setNotFound(true);
       else setNotFound(false);
     } catch (err) {
-      console.error('Failed to load order details', err);
+      // Failed to load order details
       setNotFound(true);
     } finally {
       setLoading(false);
@@ -263,7 +263,7 @@ function OrderDetailsContent() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Invoice download failed', err);
+      // Invoice download failed
       alert('Failed to download invoice');
     } finally {
       setDownloading(false);
@@ -277,7 +277,7 @@ function OrderDetailsContent() {
       await api.cancelOrder(orderId);
       await loadOrder();
     } catch (err) {
-      console.error('Cancel order failed', err);
+      // Cancel order failed
       alert('Status not changeable now');
     } finally {
       setCanceling(false);
@@ -387,7 +387,7 @@ function OrderDetailsContent() {
           {/* POS order info bar */}
           {isPos && (
             <Card className="flex flex-wrap items-center justify-between gap-4">
-              <h6 className="text-xs font-extrabold text-neutral-gray-900 tracking-tight">POS Order Information</h6>
+              <div className="text-xs font-extrabold text-neutral-gray-900 tracking-tight">POS Order Information</div>
               <div className="flex flex-wrap items-center gap-5 text-[11px] font-bold">
                 <div className="flex items-center gap-1.5"><span className="text-neutral-gray-400">Order Type:</span><span className="text-primary-600">POS</span></div>
                 <div className="flex items-center gap-1.5"><span className="text-neutral-gray-400">Payment Status:</span><span className="text-green-600 capitalize">{order.payment_status}</span></div>
@@ -401,7 +401,7 @@ function OrderDetailsContent() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Order info */}
               <Card className={`${showVerificationCode ? '' : 'md:col-span-2'} flex justify-between gap-4 items-center`}>
-                <h6 className="text-xs font-extrabold text-neutral-gray-900 tracking-tight">Order Information</h6>
+                <div className="text-xs font-extrabold text-neutral-gray-900 tracking-tight">Order Information</div>
                 <div className="flex flex-col gap-1.5 min-w-[180px]">
                   <InfoRow label="Order Type"><span className="text-primary-600">{titleCase(order.order_type)}</span></InfoRow>
                   {isCod && (
@@ -419,7 +419,7 @@ function OrderDetailsContent() {
               {showVerificationCode && (
                 <Card className="flex items-center justify-between gap-4">
                   <div className="text-xs font-extrabold text-neutral-gray-500">Order Verification Code</div>
-                  <h5 className="text-base font-extrabold text-primary-600 bg-primary-50 px-3 py-1.5 rounded-xl border border-primary-100 tracking-wider font-mono">{order.verification_code}</h5>
+                  <div className="text-base font-extrabold text-primary-600 bg-primary-50 px-3 py-1.5 rounded-xl border border-primary-100 tracking-wider font-mono">{order.verification_code}</div>
                 </Card>
               )}
 
@@ -428,7 +428,7 @@ function OrderDetailsContent() {
                 <div className="md:col-span-2 flex flex-col gap-4">
                   {/* Primary payment info */}
                   <Card className="w-full">
-                    <h6 className="text-xs font-extrabold text-neutral-gray-900 tracking-tight mb-3">Primary Payment Details</h6>
+                    <div className="text-xs font-extrabold text-neutral-gray-900 tracking-tight mb-3">Primary Payment Details</div>
                     <div className="flex flex-col gap-2 font-semibold text-xs text-neutral-600">
                       <InfoRow label="Payment status" className="justify-start gap-2">
                         {order.edited_status === 1 && Number(order.edit_due_amount) > 0 && edit?.order_due_payment_method !== 'cash_on_delivery' && edit?.order_due_payment_status === 'unpaid'
@@ -451,7 +451,7 @@ function OrderDetailsContent() {
                   {dueMethodPaidOrOffline && (
                     <Card className="w-full">
                       <div className="flex justify-between items-center mb-3">
-                        <h6 className="text-xs font-extrabold text-neutral-gray-900 tracking-tight">Additional Payment</h6>
+                        <div className="text-xs font-extrabold text-neutral-gray-900 tracking-tight">Additional Payment</div>
                         <span className={`text-[10px] font-extrabold capitalize border px-2 py-0.5 rounded-full ${edit?.order_due_payment_status === 'paid' ? 'bg-green-100/70 text-green-800 border-green-200' : 'bg-red-50 text-red-600 border-red-100'}`}>{edit?.order_due_payment_status}</span>
                       </div>
                       <div className="flex flex-col gap-2 font-semibold text-xs text-neutral-600">
@@ -468,7 +468,7 @@ function OrderDetailsContent() {
 
                   {showPayDueBill && (
                     <Card className="w-full flex flex-col items-center justify-center text-center p-6 border border-red-200/60 bg-red-50/20 gap-2">
-                      <h6 className="text-sm text-red-600 font-extrabold tracking-tight">Pay Due Bill</h6>
+                      <div className="text-sm text-red-600 font-extrabold tracking-tight">Pay Due Bill</div>
                       <p className="text-xs font-semibold text-neutral-500 max-w-[280px]">
                         Following recent adjustments, please settle the remaining balance of{' '}
                         <strong className="text-neutral-900 font-extrabold text-sm">{money(order.edit_due_amount)}</strong> to resume order fulfillment.
@@ -478,7 +478,7 @@ function OrderDetailsContent() {
 
                   {showReturnPending && (
                     <Card className="w-full flex flex-col justify-center p-6 border border-green-200/60 bg-green-50/20 gap-2">
-                      <h6 className="text-sm text-green-600 font-extrabold tracking-tight">Returned Amount Pending</h6>
+                      <div className="text-sm text-green-600 font-extrabold tracking-tight">Returned Amount Pending</div>
                       <p className="text-xs font-semibold text-neutral-500">
                         An overpayment of <strong className="text-neutral-900 font-extrabold text-sm">{money(edit?.order_return_amount)}</strong> will be credited back to your account.
                       </p>
@@ -487,7 +487,7 @@ function OrderDetailsContent() {
 
                   {showReturned && (
                     <Card className="w-full">
-                      <h6 className="text-xs font-extrabold text-neutral-gray-900 tracking-tight mb-3">Refund Details</h6>
+                      <div className="text-xs font-extrabold text-neutral-gray-900 tracking-tight mb-3">Refund Details</div>
                       <div className="flex flex-col gap-2 font-semibold text-xs text-neutral-600">
                         <InfoRow label="Payment status" className="justify-start gap-2">
                           <span className="text-green-600 font-extrabold">{edit?.order_return_payment_status}</span>
@@ -507,7 +507,7 @@ function OrderDetailsContent() {
                   {/* Shipping address */}
                   {shipping && Object.keys(shipping).length > 0 && (
                     <Card className="h-full">
-                      <h6 className="text-xs font-extrabold text-neutral-gray-900 tracking-tight mb-3">Shipping Address</h6>
+                      <div className="text-xs font-extrabold text-neutral-gray-900 tracking-tight mb-3">Shipping Address</div>
                       <div className="space-y-1.5 text-xs text-neutral-600 font-semibold leading-relaxed">
                         <div className="flex"><span className="text-neutral-400 w-16 shrink-0">Name</span><span>{shipping.contact_person_name}</span></div>
                         <div className="flex"><span className="text-neutral-400 w-16 shrink-0">Phone</span><span>{shipping.phone}</span></div>
@@ -520,7 +520,7 @@ function OrderDetailsContent() {
                   {/* Billing address */}
                   {billing && Object.keys(billing).length > 0 && (
                     <Card className="h-full">
-                      <h6 className="text-xs font-extrabold text-neutral-gray-900 tracking-tight mb-3">Billing Address</h6>
+                      <div className="text-xs font-extrabold text-neutral-gray-900 tracking-tight mb-3">Billing Address</div>
                       {sameAddress ? (
                         <div className="py-6 text-center text-xs font-bold text-neutral-400 flex items-center justify-center h-full">Same as shipping address</div>
                       ) : (
@@ -755,7 +755,7 @@ function OrderDetailsContent() {
         <Modal title="Payment Verification" onClose={() => setShowOfflineModal(false)}>
           <div className="space-y-4">
             <div>
-              <h6 className="text-xs font-bold uppercase tracking-wider text-neutral-gray-400 mb-2">Customer Info</h6>
+              <div className="text-xs font-bold uppercase tracking-wider text-neutral-gray-400 mb-2">Customer Info</div>
               <div className="flex flex-col gap-1.5 text-xs text-neutral-600 font-semibold">
                 <div className="flex gap-2">
                   <span className="min-w-[100px] text-neutral-400">Name</span>
@@ -769,7 +769,7 @@ function OrderDetailsContent() {
             </div>
 
             <div className="border-t border-neutral-gray-100 pt-4">
-              <h6 className="text-xs font-bold uppercase tracking-wider text-neutral-gray-400 mb-2">Payment Details</h6>
+              <div className="text-xs font-bold uppercase tracking-wider text-neutral-gray-400 mb-2">Payment Details</div>
               <div className="flex flex-col gap-1.5 text-xs text-neutral-600 font-semibold">
                 {Object.entries(order.offlinePayments.payment_info || {}).map(([key, value]) => (
                   key !== 'method_id' && (

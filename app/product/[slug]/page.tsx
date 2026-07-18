@@ -180,9 +180,9 @@ function SellerProductCard({ product: p }: { product: Product }) {
         />
       </div>
       <div className="flex-1 min-w-0 flex flex-col justify-center">
-        <h3 className="text-xs font-bold text-neutral-800 line-clamp-2 mb-1 group-hover:text-primary-600 transition-colors leading-relaxed">
+        <div className="text-xs font-bold text-neutral-800 line-clamp-2 mb-1 group-hover:text-primary-600 transition-colors leading-relaxed">
           {p.name}
-        </h3>
+        </div>
         <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
           {hasDiscount && (
             <del className="text-[10px] font-bold text-neutral-400">
@@ -267,9 +267,9 @@ function SimilarProductCard({ product: p }: { product: Product }) {
             <span className="text-[10px] font-bold text-neutral-400">({reviewCount})</span>
           </div>
         )}
-        <h3 className="text-xs font-bold text-neutral-800 line-clamp-2 min-h-[36px] group-hover:text-primary-600 transition-colors leading-relaxed">
+        <div className="text-xs font-bold text-neutral-800 line-clamp-2 min-h-[36px] group-hover:text-primary-600 transition-colors leading-relaxed">
           {p.name}
-        </h3>
+        </div>
         <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1.5 border-t border-neutral-gray-50">
           {hasDiscount && (
             <del className="text-[10px] font-bold text-neutral-400">
@@ -570,7 +570,7 @@ export default function ProductDetailPage() {
         setWishlisted(true);
       }
     } catch (err) {
-      console.error("Wishlist toggle failed", err);
+      // Wishlist toggle failed
     } finally {
       setWishlistBusy(false);
     }
@@ -585,7 +585,7 @@ export default function ProductDetailPage() {
       await api.requestRestock(product.id);
       setRestockRequested(true);
     } catch (err) {
-      console.error("Restock request failed", err);
+      // Restock request failed
     }
   };
 
@@ -931,6 +931,7 @@ export default function ProductDetailPage() {
                           <button
                             onClick={() => setQty((q) => Math.max(minQty, q - 1))}
                             disabled={qty <= minQty}
+                            aria-label="Decrease quantity"
                             className="w-8.5 h-full flex items-center justify-center text-primary-600 hover:bg-neutral-gray-100 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed transition-colors"
                           >
                             <Minus size={12} />
@@ -941,6 +942,7 @@ export default function ProductDetailPage() {
                           <button
                             onClick={() => setQty((q) => Math.min(maxQty, q + 1))}
                             disabled={qty >= maxQty}
+                            aria-label="Increase quantity"
                             className="w-8.5 h-full flex items-center justify-center text-primary-600 hover:bg-neutral-gray-100 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed transition-colors"
                           >
                             <Plus size={12} />
@@ -1109,9 +1111,9 @@ export default function ProductDetailPage() {
                       {/* Rating breakdown */}
                       <div className="flex flex-col md:flex-row gap-6 items-center">
                         <div className="text-center">
-                          <h2 className="text-4xl font-bold text-neutral-gray-900 mb-2">
+                          <div className="text-4xl font-bold text-neutral-gray-900 mb-2">
                             {avgRating.toFixed(1)}
-                          </h2>
+                          </div>
                           <StarRating rating={avgRating} size={18} showValue={false} />
                           <div className="text-xs text-neutral-600 mt-2">
                             {reviewsCount} ratings
@@ -1240,7 +1242,7 @@ export default function ProductDetailPage() {
                                     <div className="flex flex-wrap justify-between items-center mb-2">
                                       <div className="flex items-center gap-2">
                                         <MessageCircle size={14} className="text-primary-600" />
-                                        <h6 className="font-bold text-sm">Reply by Seller</h6>
+                                        <div className="font-bold text-sm">Reply by Seller</div>
                                       </div>
                                       <span className="text-xs text-neutral-gray-500">
                                         {formatReviewDate(reply.created_at)}
@@ -1319,9 +1321,9 @@ export default function ProductDetailPage() {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h2 className="text-[13px] font-extrabold text-neutral-900 truncate mb-1 group-hover:text-primary-600 transition-colors leading-snug">
+                    <div className="text-[13px] font-extrabold text-neutral-900 truncate mb-1 group-hover:text-primary-600 transition-colors leading-snug">
                       Seller Info
-                    </h2>
+                    </div>
                     {isTemporaryClose && (
                       <span className="text-[10px] bg-red-50 border border-red-100 text-red-650 font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wide">
                         Temporary OFF
@@ -1436,7 +1438,7 @@ export default function ProductDetailPage() {
                 <img src={images[0]} alt={product.name} className="w-full h-full object-cover" />
               </div>
               <div className="min-w-0">
-                <h6 className="text-sm font-semibold text-neutral-900 truncate">{product.name}</h6>
+                <div className="text-sm font-semibold text-neutral-900 truncate">{product.name}</div>
                 <div className="flex flex-wrap items-center gap-2 text-xs mt-0.5">
                   {hasDiscount && (
                     <del className="text-neutral-gray-400">

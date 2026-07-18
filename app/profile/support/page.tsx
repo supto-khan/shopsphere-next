@@ -47,7 +47,7 @@ function TicketList({ onOpen, onNew }: { onOpen: (id: number) => void; onNew: ()
     let active = true;
     api.getSupportTickets()
       .then((data) => { if (active) setTickets(Array.isArray(data) ? data : []); })
-      .catch((e) => console.error('Failed to load tickets', e))
+      .catch((e) => {})
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
@@ -93,7 +93,7 @@ function TicketList({ onOpen, onNew }: { onOpen: (id: number) => void; onNew: ()
               className="w-full text-left bg-neutral-white border border-neutral-gray-200/50 rounded-3xl p-5 hover:shadow-2xl hover:shadow-neutral-gray-100/20 hover:border-primary-200/60 transition-all duration-300 shadow-xl shadow-neutral-gray-100/10 flex items-center justify-between gap-4 cursor-pointer"
             >
               <div className="flex-1 min-w-0">
-                <h6 className="font-bold text-neutral-gray-900 text-sm tracking-tight capitalize truncate mb-1.5">{t.subject || 'Support Ticket'}</h6>
+                <div className="font-bold text-neutral-gray-900 text-sm tracking-tight capitalize truncate mb-1.5">{t.subject || 'Support Ticket'}</div>
                 <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold">
                   <span className={`px-2.5 py-0.5 rounded-full capitalize border ${PRIORITY_CLASS[t.priority] || 'bg-neutral-gray-200 text-neutral-600'}`}>
                     {t.priority}
@@ -134,7 +134,7 @@ function TicketConversation({ ticketId, onBack }: { ticketId: number; onBack: ()
       const first = Array.isArray(data) && data[0];
       setTicket(first ? { description: first.customer_message, attachment_full_url: first.attachment_full_url, created_at: first.created_at } : null);
     } catch (e) {
-      console.error('Failed to load conversation', e);
+      // Failed to load conversation
     } finally {
       setLoading(false);
     }
@@ -169,7 +169,7 @@ function TicketConversation({ ticketId, onBack }: { ticketId: number; onBack: ()
       await api.closeSupportTicket(ticketId);
       onBack();
     } catch (e) {
-      console.error('Failed to close ticket', e);
+      // Failed to close ticket
     } finally {
       setClosing(false);
     }
@@ -235,7 +235,8 @@ function TicketConversation({ ticketId, onBack }: { ticketId: number; onBack: ()
               <button 
                 type="submit" 
                 disabled={sending || !text.trim()} 
-                className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-primary-600 text-neutral-white disabled:opacity-50 hover:bg-primary-800 transition-all cursor-pointer shadow-md shadow-primary-600/10 active:scale-95 shrink-0"
+                aria-label="Send reply"
+                className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-primary-600 text-neutral-white disabled:opacity-50 hover:bg-primary-800 transition-all cursor-pointer shadow-md shadow-primary-600/10 active:scale-95 shrink-0"
               >
                 {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={15} />}
               </button>
@@ -275,8 +276,8 @@ function NewTicketModal({ onClose, onCreated }: { onClose: () => void; onCreated
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-black/40 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
       <div className="bg-neutral-white rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl border border-neutral-gray-200/30" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4.5 border-b border-neutral-gray-100 bg-neutral-gray-50/20">
-          <h3 className="text-sm font-extrabold text-neutral-gray-900 tracking-tight">Create Support Ticket</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-neutral-gray-100 flex items-center justify-center text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer"><X size={16} /></button>
+          <h2 className="text-sm font-extrabold text-neutral-gray-900 tracking-tight">Create Support Ticket</h2>
+          <button onClick={onClose} aria-label="Close modal" className="w-12 h-12 rounded-full hover:bg-neutral-gray-100 flex items-center justify-center text-neutral-500 hover:text-neutral-900 transition-colors cursor-pointer"><X size={16} /></button>
         </div>
         <form onSubmit={submit} className="p-6 space-y-5">
           <div>
