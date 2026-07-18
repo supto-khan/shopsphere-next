@@ -79,7 +79,7 @@ export default function WishlistPage() {
             const productHref = product?.slug ? `/product/${product.slug}` : '#';
 
             // Resolve thumbnail image
-            const imageSrc = resolveProductImage(product) || '/placeholder.jpg';
+            const imageSrc = resolveProductImage(product) || '/placeholder.webp';
 
             const cartItem = cart.find((item) => item.product.id === product.id);
             const qty = cartItem ? cartItem.quantity : 0;

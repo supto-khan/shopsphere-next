@@ -101,7 +101,7 @@ function TicketList({ onOpen, onNew }: { onOpen: (id: number) => void; onNew: ()
                   <span className={`px-2.5 py-0.5 rounded-full capitalize border ${
                     t.status === 'close' 
                       ? 'bg-red-50 text-red-600 border-red-100' 
-                      : 'bg-green-50 text-green-600 border-green-100'
+                      : 'bg-green-100/70 text-green-800 border-green-200'
                   }`}>
                     {t.status === 'close' ? 'Closed' : 'Active'}
                   </span>

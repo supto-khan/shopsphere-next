@@ -202,8 +202,6 @@ export default function HeroSlider({ initialBanners }: HeroSliderProps) {
                     className="object-cover select-none"
                     draggable="false"
                     priority={isActive}
-                    // LCP Optimizations: eager load active first slide
-                    loading={isActive ? undefined : "lazy"}
                   />
                 )}
               </div>

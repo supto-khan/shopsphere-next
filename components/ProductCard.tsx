@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Product } from '@/lib/api';
 import { useAppStore } from '@/lib/store';
 import { Plus, Minus } from 'lucide-react';
-import { resolveImage } from '@/lib/image';
+import { resolveImage, PLACEHOLDER_IMAGE } from '@/lib/image';
 import Image from 'next/image';
 
 interface ProductCardProps {
@@ -42,7 +42,7 @@ export default function ProductCard({ product, priority = false }: ProductCardPr
   } else if (product.thumbnail && !product.thumbnail.includes('def.png')) {
     imageSrc = resolveImage(`/storage/product/thumbnail/${product.thumbnail}`);
   } else {
-    imageSrc = '/placeholder.jpg';
+    imageSrc = PLACEHOLDER_IMAGE;
   }
 
   return (

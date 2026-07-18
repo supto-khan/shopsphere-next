@@ -26,7 +26,7 @@ import Link from 'next/link';
 
 // Helpers
 function toProxyUrl(url?: any): string {
-  return resolveImage(url, '/placeholder.jpg');
+  return resolveImage(url, '/placeholder.webp');
 }
 
 export default function VendorsPage() {
@@ -580,7 +580,7 @@ export default function VendorsPage() {
                             alt={displayName}
                             className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-350"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/placeholder.jpg';
+                              (e.target as HTMLImageElement).src = '/placeholder.webp';
                             }}
                           />
 
@@ -602,7 +602,7 @@ export default function VendorsPage() {
                               alt={displayName}
                               className="w-full h-full object-cover"
                               onError={(e) => {
-                                (e.target as HTMLImageElement).src = '/placeholder.jpg';
+                                (e.target as HTMLImageElement).src = '/placeholder.webp';
                               }}
                             />
                           </div>

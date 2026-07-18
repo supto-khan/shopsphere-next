@@ -1,14 +1,27 @@
 import React, { Suspense } from 'react';
-import { api, Category, Product, Brand } from '@/lib/api';
+import { Category, Product, Brand } from '@/lib/api';
+import {
+  getCachedConfig,
+  getCachedCategories,
+  getCachedTopSellers,
+  getCachedBrands,
+  getCachedTopShops,
+  getCachedNewArrivals,
+  getCachedTopRatedProducts,
+  getCachedFeaturedProducts,
+  getCachedBanners,
+  getCachedProductsByCategory
+} from '@/lib/server-cache';
 import StorefrontClient from '@/components/StorefrontClient';
 import StorefrontSkeleton from '@/components/StorefrontSkeleton';
 
-// Enable SSG (Static Site Generation) and ISR (Incremental Static Regeneration)
-// Revalidate the page in the background at most every 60 seconds.
+// Enable ISR — the page is served from the CDN and revalidated server-side
+// every 60 seconds without blocking any visitor.
 export const revalidate = 60;
 
 async function StorefrontServerContent() {
-  // ── Step 1: Pre-fetch all storefront data on the Server in parallel ─────
+  // ── Fetch ALL storefront data from the caching layer on the server ─────────
+  // Resolves from Vercel Edge Cache or Memory in <5ms on cache hit.
   const [
     config,
     categories,
@@ -20,27 +33,31 @@ async function StorefrontServerContent() {
     featured,
     bannersData,
   ] = await Promise.all([
-    api.getConfig().catch(() => ({})),
-    api.getCategories().catch(() => []),
-    api.getTopSellers().catch(() => []),
-    api.getBrands().catch(() => []),
-    api.getTopShops().catch(() => []),
-    api.getNewArrivals().catch(() => []),
-    api.getTopRatedProducts().catch(() => []),
-    api.getFeaturedProducts().catch(() => []),
-    api.getBanners().catch(() => []),
+    getCachedConfig().catch(() => ({})),
+    getCachedCategories().catch(() => []),
+    getCachedTopSellers().catch(() => []),
+    getCachedBrands().catch(() => []),
+    getCachedTopShops().catch(() => []),
+    getCachedNewArrivals().catch(() => []),
+    getCachedTopRatedProducts().catch(() => []),
+    getCachedFeaturedProducts().catch(() => []),
+    getCachedBanners().catch(() => []),
   ]);
 
-  // Filter active Main Banners
-  const mainBanners = (Array.isArray(bannersData) ? bannersData : []).filter(
-    (b: any) => b.published === 1 && b.banner_type === 'Main Banner'
-  );
+  const allBanners = Array.isArray(bannersData) ? bannersData : [];
 
-  // ── Step 2: Fetch products for categories in parallel on the server ──────
+  // Filter all banner types on the server so child components receive props
+  // instead of each independently calling api.getBanners() on mount.
+  const mainBanners    = allBanners.filter((b: any) => b.published === 1 && b.banner_type === 'Main Banner');
+  const sectionBanners = allBanners.filter((b: any) => b.published === 1 && b.banner_type === 'Main Section Banner');
+  const footerBanners  = allBanners.filter((b: any) => b.published === 1 && b.banner_type === 'Footer Banner');
+  const popupBanner    = allBanners.find( (b: any) => b.published === 1 && b.banner_type === 'Popup Banner') ?? null;
+
+  // ── Pre-render up to 5 category product grids on the server ──────────────
   const categorySectionsData = await Promise.all(
     categories.slice(0, 5).map(async (category: Category) => {
       try {
-        const products = await api.getProductsByCategory(category.id, 8, 1);
+        const products = await getCachedProductsByCategory(category.id, 8, 1);
         return { category, products };
       } catch {
         return { category, products: [] };
@@ -62,6 +79,9 @@ async function StorefrontServerContent() {
       initialFeatured={featured}
       initialCategorySections={categorySections}
       initialBanners={mainBanners}
+      initialSectionBanners={sectionBanners}
+      initialFooterBanners={footerBanners}
+      initialPopupBanner={popupBanner}
     />
   );
 }

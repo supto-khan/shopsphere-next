@@ -2,7 +2,7 @@ import React from 'react';
 import { api } from '@/lib/api';
 import Footer from '@/components/Footer';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 86400; // Cache static content, revalidate once a day
 
 export default async function AboutUsPage() {
   let pageData: any = null;
@@ -46,7 +46,7 @@ export default async function AboutUsPage() {
             <div className="bg-neutral-white border border-neutral-gray-200/50 rounded-3xl p-6 sm:p-10 shadow-sm">
               <div 
                 className="prose prose-sm prose-neutral max-w-none text-xs sm:text-sm font-medium text-neutral-gray-600 leading-relaxed space-y-4"
-                dangerouslySetInnerHTML={{ __html: pageData.value }}
+                dangerouslySetInnerHTML={{ __html: pageData.value || '' }}
               />
             </div>
           </div>

@@ -1,13 +1,12 @@
-'use client';
-
-import React, { useEffect, useState, useRef, Suspense } from 'react';
+import React, { Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { api, Blog, BlogCategory, BACKEND_URL } from '@/lib/api';
+import { getCachedPopularBlogs, getCachedConfig } from '@/lib/server-cache';
 import Footer from '@/components/Footer';
-import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
+import { Blog, BACKEND_URL } from '@/lib/api';
 
-// Helper to format image URLs
+// Cache popular blogs for 30 minutes
+export const revalidate = 1800;
+
 const getImageUrl = (imgObj: any) => {
   if (imgObj && imgObj.path) {
     if (imgObj.path.startsWith('http')) {
@@ -15,345 +14,156 @@ const getImageUrl = (imgObj: any) => {
     }
     return `${BACKEND_URL}/${imgObj.path}`;
   }
-  return '/placeholder.jpg';
+  return '/placeholder.webp';
 };
 
-function PopularBlogList() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const search = searchParams.get('search') || '';
-  const category = searchParams.get('category') || '';
-  const page = parseInt(searchParams.get('page') || '1', 10);
-
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<{
-    popularBlogList: any;
-    blogCategoryList: BlogCategory[];
-  } | null>(null);
-
-  const [searchInput, setSearchInput] = useState(search);
-  const categoryContainerRef = useRef<HTMLUListElement>(null);
-  const [showArrows, setShowArrows] = useState(false);
-
-  const checkOverflow = () => {
-    if (categoryContainerRef.current) {
-      const { scrollWidth, clientWidth } = categoryContainerRef.current;
-      setShowArrows(scrollWidth > clientWidth);
-    }
+interface PopularBlogPageProps {
+  searchParams: {
+    search?: string;
+    category?: string;
+    page?: string;
   };
+}
 
-  useEffect(() => {
-    checkOverflow();
-    window.addEventListener('resize', checkOverflow);
-    return () => window.removeEventListener('resize', checkOverflow);
-  }, [data]);
+import BlogFiltersClient from '../BlogFiltersClient';
 
-  useEffect(() => {
-    setLoading(true);
-    api.getPopularBlogs({ search, category, page })
-      .then((res) => {
-        setData(res);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Failed to load popular blogs', err);
-        setLoading(false);
-      });
-  }, [search, category, page]);
+export default async function PopularBlogPage({ searchParams }: PopularBlogPageProps) {
+  const search = searchParams.search || '';
+  const category = searchParams.category || '';
+  const page = parseInt(searchParams.page || '1', 10);
 
-  useEffect(() => {
-    setSearchInput(search);
-  }, [search]);
+  const [data, config] = await Promise.all([
+    getCachedPopularBlogs().catch(() => null),
+    getCachedConfig().catch(() => null),
+  ]);
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const params = new URLSearchParams(searchParams.toString());
-    if (searchInput) {
-      params.set('search', searchInput);
-    } else {
-      params.delete('search');
-    }
-    params.set('page', '1');
-    router.push(`/blog/popular?${params.toString()}`);
-  };
+  // Handle local in-memory filtering since popularBlogs endpoint returns full list
+  const rawList = data?.popularBlogList?.data || data?.popularBlogList || [];
+  let blogs: Blog[] = Array.isArray(rawList) ? rawList : [];
+  const blogCategoryList = data?.blogCategoryList || [];
 
-  const handleClearSearch = () => {
-    setSearchInput('');
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('search');
-    params.set('page', '1');
-    router.push(`/blog/popular?${params.toString()}`);
-  };
-
-  const handleCategorySelect = (catName: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (catName) {
-      params.set('category', catName);
-    } else {
-      params.delete('category');
-    }
-    params.set('page', '1');
-    router.push(`/blog/popular?${params.toString()}`);
-  };
-
-  const handlePageChange = (newPage: number) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('page', String(newPage));
-    router.push(`/blog/popular?${params.toString()}`);
-  };
-
-  const scrollCategories = (direction: 'left' | 'right') => {
-    if (categoryContainerRef.current) {
-      const scrollAmount = 200;
-      categoryContainerRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth'
-      });
-    }
-  };
-
-  if (loading && !data) {
-    return (
-      <div className="w-full flex items-center justify-center min-h-screen py-20 bg-neutral-white">
-        <div className="w-12 h-12 border-4 border-primary-400 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
+  if (search) {
+    const q = search.toLowerCase();
+    blogs = blogs.filter((b) => b.title.toLowerCase().includes(q) || b.description.toLowerCase().includes(q));
+  }
+  if (category) {
+    blogs = blogs.filter((b) => b.category?.name === category);
   }
 
-  const blogCategoryList = data?.blogCategoryList || [];
-  const popularBlogList = data?.popularBlogList?.data || [];
-  const pagination = data?.popularBlogList;
+  // Handle basic page slicing
+  const limit = 10;
+  const total = blogs.length;
+  const totalPages = Math.ceil(total / limit);
+  const slicedBlogs = blogs.slice((page - 1) * limit, page * limit);
 
   return (
     <div className="w-full min-h-[calc(100vh-65px)] overflow-y-auto bg-neutral-white">
-      {/* Blog Root Container */}
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Banner Area */}
+
         <div className="hidden sm:block relative overflow-hidden rounded-2xl bg-primary-50 border border-primary-100/50 mb-8 p-12 text-center">
-          <div className="absolute inset-0 opacity-15 pointer-events-none">
-            <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="1" />
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#grid)" />
-            </svg>
-          </div>
-          <h1 className="relative text-4xl font-bold text-primary-900 mb-3">
-            Popular Blogs
+          <h1 className="relative text-4xl font-bold text-primary-900 mb-3 truncate">
+            Popular Articles
           </h1>
+          <p className="relative text-lg text-primary-800 max-w-2xl mx-auto line-clamp-2">
+            Most read and viewed updates from our editorial team
+          </p>
         </div>
 
-        <div className="block sm:hidden text-center mb-6">
-          <h2 className="text-xl font-bold text-neutral-gray-900">
-            Popular Blogs
+        <div className="text-center mb-6 block sm:hidden">
+          <h2 className="text-xl font-bold text-neutral-gray-900 truncate">
+            Popular Articles
           </h2>
         </div>
 
-        {/* Search Input Bar */}
-        <div className="flex flex-col items-center justify-center mb-8 max-w-md mx-auto">
-          <form onSubmit={handleSearchSubmit} className="relative w-full">
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search Blog..."
-              className="w-full pl-4 pr-10 py-3 bg-neutral-white border border-neutral-gray-200 rounded-full text-sm text-neutral-gray-900 focus:outline-none focus:border-primary-400 shadow-sm"
-            />
-            <button 
-              type="submit" 
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-gray-600 hover:text-primary-600 cursor-pointer"
-            >
-              🔍
-            </button>
-          </form>
-          {search && (
-            <div 
-              onClick={handleClearSearch}
-              className="flex items-center gap-1 mt-2 text-xs text-danger font-medium cursor-pointer hover:underline"
-            >
-              <span>Clear Search</span>
-              <span>&times;</span>
-            </div>
-          )}
-        </div>
+        {/* Filters */}
+        <Suspense fallback={
+          <div className="h-14 bg-neutral-gray-50 border border-neutral-gray-150 animate-pulse rounded-full mb-8" />
+        }>
+          <BlogFiltersClient
+            initialSearch={search}
+            initialCategory={category}
+            blogCategoryList={blogCategoryList}
+          />
+        </Suspense>
 
-        {/* Categories Row */}
-        <div className="relative mb-8 border-b border-neutral-gray-50 pb-6">
-          <div className="flex items-center">
-            {showArrows && (
-              <button 
-                onClick={() => scrollCategories('left')}
-                className="p-1.5 rounded-full border border-neutral-gray-200 bg-neutral-white hover:bg-neutral-gray-50 text-neutral-gray-600 transition shadow-sm mr-2 cursor-pointer flex items-center justify-center"
-              >
-                <ChevronLeft size={16} />
-              </button>
-            )}
-            
-            <ul 
-              ref={categoryContainerRef}
-              className="flex gap-2 overflow-x-auto scrollbar-none py-1 flex-1 select-none"
-            >
-              <li>
-                <button
-                  onClick={() => handleCategorySelect('')}
-                  className={`px-4 py-2 text-sm font-medium rounded-full border transition whitespace-nowrap cursor-pointer ${
-                    category === ''
-                      ? 'bg-primary-600 border-primary-600 text-neutral-white shadow-sm'
-                      : 'bg-neutral-white border-neutral-gray-200 text-neutral-gray-600 hover:border-neutral-gray-300'
-                  }`}
-                >
-                  All
-                </button>
-              </li>
-              {blogCategoryList.map((cat) => (
-                <li key={cat.id}>
-                  <button
-                    onClick={() => handleCategorySelect(cat.name)}
-                    className={`px-4 py-2 text-sm font-medium rounded-full border transition whitespace-nowrap cursor-pointer ${
-                      category === cat.name
-                        ? 'bg-primary-600 border-primary-600 text-neutral-white shadow-sm'
-                        : 'bg-neutral-white border-neutral-gray-200 text-neutral-gray-600 hover:border-neutral-gray-300'
-                    }`}
-                  >
-                    {cat.name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-
-            {showArrows && (
-              <button 
-                onClick={() => scrollCategories('right')}
-                className="p-1.5 rounded-full border border-neutral-gray-200 bg-neutral-white hover:bg-neutral-gray-50 text-neutral-gray-600 transition shadow-sm ml-2 cursor-pointer flex items-center justify-center"
-              >
-                <ChevronRight size={16} />
-              </button>
-            )}
-          </div>
-          {search && (
-            <div className="mt-4 text-sm text-neutral-gray-600 font-medium">
-              <span className="font-semibold text-neutral-gray-900 mr-1">{popularBlogList.length}</span>
-              Search Result Found
-            </div>
-          )}
-        </div>
-
-        {/* Popular Blogs Grid */}
-        {popularBlogList.length === 0 ? (
-          <div className="text-center py-20 bg-neutral-white border border-neutral-gray-50 rounded-2xl p-8">
-            <span className="text-5xl block mb-4">📝</span>
-            <h3 className="text-lg font-bold text-neutral-gray-950 mb-2">No Result Found</h3>
-            <p className="text-sm text-neutral-gray-600">
-              Try adjusting your search keywords or category filters to find what you are looking for.
-            </p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {popularBlogList.map((blog: Blog) => (
-                <div 
-                  key={blog.id} 
-                  className="bg-neutral-white border border-neutral-gray-200/50 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition duration-300 flex flex-col"
-                >
-                  <Link href={`/blog/${blog.slug}`} className="block relative w-full aspect-video overflow-hidden">
-                    <img
-                      src={getImageUrl(blog.thumbnail_full_url)}
-                      alt={blog.title}
-                      className="w-full h-full object-cover hover:scale-105 transition duration-500"
-                    />
-                    {blog.category && (
-                      <span className="absolute top-4 left-4 bg-primary-600 text-neutral-white text-xs font-semibold px-3 py-1.5 rounded-md uppercase tracking-wider">
-                        {blog.category.name}
-                      </span>
-                    )}
-                  </Link>
-                  
-                  <div className="p-5 flex-1 flex flex-col justify-between">
-                    <div>
-                      <div className="text-xs text-neutral-gray-600 mb-2 flex items-center gap-2">
-                        {blog.writer && (
-                          <span className="font-medium text-neutral-gray-900">By {blog.writer}</span>
-                        )}
-                        <span>•</span>
-                        <span>{new Date(blog.publish_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                        <span>•</span>
-                        <span>{blog.click_count || 0} views</span>
-                      </div>
-                      <Link href={`/blog/${blog.slug}`}>
-                        <h3 className="text-base font-bold text-neutral-gray-900 hover:text-primary-600 transition mb-2 line-clamp-2">
-                          {blog.title}
-                        </h3>
-                      </Link>
-                      <p 
-                        className="text-neutral-gray-600 text-sm mb-4 line-clamp-3"
-                        dangerouslySetInnerHTML={{ __html: blog.description.replace(/<[^>]*>/g, '') }}
-                      />
-                    </div>
-                    <Link 
-                      href={`/blog/${blog.slug}`} 
-                      className="inline-flex items-center gap-1 text-sm font-semibold text-primary-600 hover:text-primary-800 transition"
+        {/* Content Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-12">
+            {slicedBlogs.length === 0 ? (
+              <div className="text-center py-20 bg-neutral-white border border-neutral-gray-55 rounded-2xl p-8">
+                <span className="text-5xl block mb-4">📝</span>
+                <h3 className="text-lg font-bold text-neutral-gray-900 mb-2">No Result Found</h3>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {slicedBlogs.map((blog: Blog) => (
+                    <div
+                      key={blog.id}
+                      className="bg-neutral-white border border-neutral-gray-200/50 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition duration-300 flex flex-col"
                     >
-                      <span>Read More</span>
-                      <ArrowRight size={16} />
+                      <Link href={`/blog/${blog.slug}`} className="block relative w-full aspect-video overflow-hidden">
+                        <img
+                          src={getImageUrl(blog.thumbnail_full_url)}
+                          alt={blog.title}
+                          className="w-full h-full object-cover hover:scale-105 transition duration-500"
+                          loading="lazy"
+                        />
+                      </Link>
+                      <div className="p-6 flex-1 flex flex-col justify-between">
+                        <div>
+                          <div className="text-xs text-neutral-gray-650 mb-2">
+                            {new Date(blog.publish_date).toLocaleDateString()}
+                          </div>
+                          <Link href={`/blog/${blog.slug}`}>
+                            <h4 className="text-base font-bold text-neutral-gray-900 hover:text-primary-600 transition line-clamp-2">
+                              {blog.title}
+                            </h4>
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex justify-center items-center gap-2 py-6 border-t border-neutral-gray-50">
+                    <Link
+                      href={page > 1 ? `/blog/popular?page=${page - 1}${search ? `&search=${search}` : ''}${category ? `&category=${category}` : ''}` : '#'}
+                      className={`px-3.5 py-2 rounded-lg border border-neutral-gray-200 text-sm font-medium hover:bg-neutral-gray-50 ${page === 1 ? 'opacity-50 pointer-events-none' : ''}`}
+                    >
+                      &larr; Prev
+                    </Link>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                      <Link
+                        key={p}
+                        href={`/blog/popular?page=${p}${search ? `&search=${search}` : ''}${category ? `&category=${category}` : ''}`}
+                        className={`w-10 h-10 rounded-lg text-sm font-semibold border transition flex items-center justify-center ${
+                          page === p
+                            ? 'bg-primary-600 border-primary-600 text-neutral-white shadow-sm'
+                            : 'bg-neutral-white border-neutral-gray-200 hover:bg-neutral-gray-50 text-neutral-gray-600'
+                        }`}
+                      >
+                        {p}
+                      </Link>
+                    ))}
+
+                    <Link
+                      href={page < totalPages ? `/blog/popular?page=${page + 1}${search ? `&search=${search}` : ''}${category ? `&category=${category}` : ''}` : '#'}
+                      className={`px-3.5 py-2 rounded-lg border border-neutral-gray-200 text-sm font-medium hover:bg-neutral-gray-50 ${page === totalPages ? 'opacity-50 pointer-events-none' : ''}`}
+                    >
+                      Next &rarr;
                     </Link>
                   </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Pagination */}
-            {pagination && pagination.last_page > 1 && (
-              <div className="flex justify-center items-center gap-2 py-6 border-t border-neutral-gray-50">
-                <button
-                  disabled={page === 1}
-                  onClick={() => handlePageChange(page - 1)}
-                  className="px-3.5 py-2 rounded-lg border border-neutral-gray-200 text-sm font-medium hover:bg-neutral-gray-50 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
-                >
-                  &larr; Prev
-                </button>
-                
-                {Array.from({ length: pagination.last_page }, (_, i) => i + 1).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => handlePageChange(p)}
-                    className={`w-10 h-10 rounded-lg text-sm font-semibold border transition cursor-pointer ${
-                      page === p
-                        ? 'bg-primary-600 border-primary-600 text-neutral-white shadow-sm'
-                        : 'bg-neutral-white border-neutral-gray-200 hover:bg-neutral-gray-50 text-neutral-gray-600'
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
-
-                <button
-                  disabled={page === pagination.last_page}
-                  onClick={() => handlePageChange(page + 1)}
-                  className="px-3.5 py-2 rounded-lg border border-neutral-gray-200 text-sm font-medium hover:bg-neutral-gray-50 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
-                >
-                  Next &rarr;
-                </button>
+                )}
               </div>
             )}
           </div>
-        )}
+        </div>
       </div>
-      <Footer />
+      <Footer config={config} />
     </div>
-  );
-}
-
-export default function PopularBlogPage() {
-  return (
-    <Suspense fallback={
-      <div className="w-full flex items-center justify-center min-h-screen py-20 bg-neutral-white">
-        <div className="w-12 h-12 border-4 border-primary-400 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    }>
-      <PopularBlogList />
-    </Suspense>
   );
 }

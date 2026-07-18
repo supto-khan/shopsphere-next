@@ -4,15 +4,15 @@ import { BACKEND_URL } from './api';
 export function normalizeImage(fullUrl?: any): string | null {
   if (!fullUrl) return null;
   const path = typeof fullUrl === 'string' ? fullUrl : fullUrl?.path;
-  if (!path || path.includes('def.png')) return '/placeholder.jpg';
-  
+  if (!path || path.includes('def.png')) return '/placeholder.webp';
+
   const cleanPath = path.replace(/^https?:\/\/[^\/]+/, '');
   const cleanBackendUrl = BACKEND_URL.replace(/\/$/, '');
-  
+
   if (!cleanPath.includes('/')) {
     return `${cleanBackendUrl}/storage/profile/${cleanPath}`;
   }
-  
+
   const proxied = cleanPath.replace('storage/app/public', 'storage');
   return `${cleanBackendUrl}${proxied.startsWith('/') ? proxied : '/' + proxied}`;
 }

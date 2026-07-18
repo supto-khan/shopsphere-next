@@ -120,7 +120,7 @@ function TrackContent({ order, orderId }: OrderShellContext) {
                       )}
                     </div>
                     {active && !isTerminal && (
-                      <span className="mt-0.5 flex items-center justify-center w-5 h-5 rounded-full bg-green-50 border border-green-150 text-green-600">
+                      <span className="mt-0.5 flex items-center justify-center w-5 h-5 rounded-full bg-green-100/70 border border-green-200 text-green-800">
                         <Check size={11} className="stroke-[3px]" />
                       </span>
                     )}

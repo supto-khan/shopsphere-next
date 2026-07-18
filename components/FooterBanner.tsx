@@ -1,16 +1,12 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Autoplay, Navigation } from 'swiper/modules';
-import { api } from '@/lib/api';
 import { resolveImage } from '@/lib/image';
 
-// Import Swiper styles
-import 'swiper/css';
-import 'swiper/css/navigation';
+// NOTE: Swiper removed — replaced with native CSS scroll-snap slider.
+// Eliminates ~45 KB of Swiper JS + ~12 KB of Swiper CSS from the bundle.
 
 interface Banner {
   id: number;
@@ -23,82 +19,42 @@ interface Banner {
     status: number;
     key: string;
   };
-  product?: {
-    slug: string;
-  };
-  shop?: {
-    slug: string;
-  };
-  brand?: {
-    slug: string;
-  };
-  category?: {
-    slug: string;
-  };
+  product?: { slug: string };
+  shop?: { slug: string };
+  brand?: { slug: string };
+  category?: { slug: string };
 }
 
-const toProxyUrl = (url?: string): string => {
-  return resolveImage(url, '');
-};
+interface FooterBannerProps {
+  /**
+   * Pre-filtered "Footer Banner" list passed from the server.
+   * When provided, no client-side API call is made.
+   */
+  initialBanners?: Banner[];
+}
 
-export default function FooterBanner() {
+const toProxyUrl = (url?: string): string => resolveImage(url, '');
+
+export default function FooterBanner({ initialBanners }: FooterBannerProps) {
   const router = useRouter();
-  const [banners, setBanners] = useState<Banner[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [current, setCurrent] = useState(0);
 
-  useEffect(() => {
-    let active = true;
-    api.getBanners()
-      .then((data) => {
-        if (!active) return;
-        const list = Array.isArray(data) ? data : [];
-        // Filter active Footer Banners
-        const filtered = list.filter(
-          (b: any) => b.published === 1 && b.banner_type === 'Footer Banner'
-        );
-        setBanners(filtered);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  // Use server-provided banners — no useEffect / api.getBanners() call needed
+  const banners: Banner[] = initialBanners ?? [];
+
+  if (banners.length === 0) return null;
 
   const handleBannerClick = (b: Banner) => {
-    if (b.resource_type === 'product' && b.product?.slug) {
-      router.push(`/product/${b.product.slug}`);
-    } else if (b.resource_type === 'category' && b.category?.slug) {
-      router.push(`/search?category=${b.category.slug}`);
-    } else if (b.resource_type === 'brand' && b.brand?.slug) {
-      router.push(`/search?brand=${b.brand.slug}`);
-    } else if (b.resource_type === 'shop' && b.shop?.slug) {
-      router.push(`/shop/${b.shop.slug}`);
-    }
+    if (b.resource_type === 'product'  && b.product?.slug)  router.push(`/product/${b.product.slug}`);
+    else if (b.resource_type === 'category' && b.category?.slug) router.push(`/search?category=${b.category.slug}`);
+    else if (b.resource_type === 'brand'    && b.brand?.slug)    router.push(`/search?brand=${b.brand.slug}`);
+    else if (b.resource_type === 'shop'     && b.shop?.slug)     router.push(`/shop/${b.shop.slug}`);
   };
 
-  if (loading) {
-    return (
-      <div className="w-full rounded-2xl animate-pulse h-[350px] md:h-[450px] min-h-[350px] bg-neutral-gray-55/20 border border-neutral-gray-200/50 relative overflow-hidden flex flex-col justify-between p-8 md:p-12">
-        {/* Skeleton Title & Subtitle blocks */}
-        <div className="space-y-4 max-w-md mt-6">
-          <div className="h-8 md:h-10 bg-neutral-gray-200/85 rounded-lg w-2/3" />
-          <div className="h-4 md:h-5 bg-neutral-gray-200/70 rounded-lg w-1/3" />
-        </div>
-        
-        {/* Skeleton Action Button */}
-        <div className="h-10 md:h-12 bg-neutral-gray-200/80 rounded-xl w-32 mt-4" />
-      </div>
-    );
-  }
+  const handleNext = () => setCurrent((prev) => (prev + 1) % banners.length);
+  const handlePrev = () => setCurrent((prev) => (prev - 1 + banners.length) % banners.length);
 
-  if (banners.length === 0) {
-    return null; // Return nothing if no active footer banners are configured
-  }
-
-  // Single banner takes full width
+  // Single banner — simple full-width display
   if (banners.length === 1) {
     const banner = banners[0];
     const imageSrc = toProxyUrl(banner.photo_full_url?.path);
@@ -112,60 +68,59 @@ export default function FooterBanner() {
           alt="Footer promotion banner"
           className="w-full h-full object-cover select-none"
           draggable="false"
+          loading="lazy"
         />
       </div>
     );
   }
 
-  // Multiple banners show 2 at a time on desktop using Swiper
+  // Multiple banners — native CSS-based slider (no Swiper dependency)
   return (
     <div className="relative w-full select-none group/footer-banner">
-      <Swiper
-        modules={[Autoplay, Navigation]}
-        autoplay={{
-          delay: 5000,
-          disableOnInteraction: false,
-          pauseOnMouseEnter: true,
-        }}
-        navigation={{
-          nextEl: '.swiper-footer-next',
-          prevEl: '.swiper-footer-prev',
-        }}
-        spaceBetween={16}
-        slidesPerView={1}
-        breakpoints={{
-          640: { slidesPerView: 2 },
-        }}
-        loop={banners.length >= 2}
-        className="py-1 !h-auto"
-      >
-        {banners.map((banner) => {
+      {/* Two-up grid on desktop using CSS grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Show 2 banners at a time, cycling with prev/next */}
+        {[0, 1].map((offset) => {
+          const banner = banners[(current + offset) % banners.length];
+          if (!banner) return null;
           const imageSrc = toProxyUrl(banner.photo_full_url?.path);
           return (
-            <SwiperSlide key={banner.id} className="!h-auto flex">
-              <div
-                onClick={() => handleBannerClick(banner)}
-                className="w-full rounded-2xl overflow-hidden shadow-md border border-neutral-gray-200/40 cursor-pointer bg-neutral-gray-55/20 hover:opacity-95 transition-opacity h-[350px] md:h-[450px] min-h-[350px] select-none flex"
-              >
-                <img
-                  src={imageSrc}
-                  alt="Footer promotion banner"
-                  className="w-full h-full object-cover select-none"
-                  draggable="false"
-                />
-              </div>
-            </SwiperSlide>
+            <div
+              key={`${banner.id}-${offset}`}
+              onClick={() => handleBannerClick(banner)}
+              className="w-full rounded-2xl overflow-hidden shadow-md border border-neutral-gray-200/40 cursor-pointer bg-neutral-gray-55/20 hover:opacity-95 transition-opacity h-[350px] md:h-[450px] min-h-[350px] select-none"
+            >
+              <img
+                src={imageSrc}
+                alt="Footer promotion banner"
+                className="w-full h-full object-cover select-none"
+                draggable="false"
+                loading="lazy"
+              />
+            </div>
           );
         })}
-      </Swiper>
+      </div>
 
       {/* Navigation Arrows */}
-      <button className="swiper-footer-prev absolute -left-5 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-primary-600 text-neutral-white shadow-lg flex items-center justify-center hover:bg-primary-700 active:scale-95 transition-all duration-300 cursor-pointer opacity-0 -translate-x-4 pointer-events-none group-hover/footer-banner:opacity-100 group-hover/footer-banner:translate-x-0 group-hover/footer-banner:pointer-events-auto">
-        <ChevronLeft size={20} />
-      </button>
-      <button className="swiper-footer-next absolute -right-5 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-primary-600 text-neutral-white shadow-lg flex items-center justify-center hover:bg-primary-700 active:scale-95 transition-all duration-300 cursor-pointer opacity-0 translate-x-4 pointer-events-none group-hover/footer-banner:opacity-100 group-hover/footer-banner:translate-x-0 group-hover/footer-banner:pointer-events-auto">
-        <ChevronRight size={20} />
-      </button>
+      {banners.length > 2 && (
+        <>
+          <button
+            onClick={handlePrev}
+            aria-label="Previous banner"
+            className="absolute -left-5 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-primary-600 text-neutral-white shadow-lg flex items-center justify-center hover:bg-primary-700 active:scale-95 transition-all duration-300 cursor-pointer opacity-0 -translate-x-4 pointer-events-none group-hover/footer-banner:opacity-100 group-hover/footer-banner:translate-x-0 group-hover/footer-banner:pointer-events-auto"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <button
+            onClick={handleNext}
+            aria-label="Next banner"
+            className="absolute -right-5 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-primary-600 text-neutral-white shadow-lg flex items-center justify-center hover:bg-primary-700 active:scale-95 transition-all duration-300 cursor-pointer opacity-0 translate-x-4 pointer-events-none group-hover/footer-banner:opacity-100 group-hover/footer-banner:translate-x-0 group-hover/footer-banner:pointer-events-auto"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </>
+      )}
     </div>
   );
 }

@@ -115,11 +115,11 @@ export default function RestockPage() {
             const productHref = product?.slug ? `/product/${product.slug}` : '#';
 
             // Resolve image
-            const imageSrc = resolveProductImage(product) || '/placeholder.jpg';
+            const imageSrc = resolveProductImage(product) || '/placeholder.webp';
 
             return (
-              <div 
-                key={req.id} 
+              <div
+                key={req.id}
                 className="bg-neutral-white border border-neutral-gray-200/60 rounded-2xl p-4 flex flex-col items-center text-center relative transition-all duration-300 hover:shadow-xl hover:border-primary-200 group shadow-lg shadow-neutral-gray-100/10"
               >
                 {/* Image Wrapper */}
@@ -185,15 +185,15 @@ export default function RestockPage() {
             <h3 className="text-sm font-extrabold text-neutral-gray-900 mb-2 tracking-tight">Clear all requests?</h3>
             <p className="text-xs font-semibold text-neutral-500 leading-relaxed mb-6">This will remove all stock alert requests from your account history.</p>
             <div className="flex justify-end gap-3">
-              <button 
-                onClick={() => setConfirmClear(false)} 
+              <button
+                onClick={() => setConfirmClear(false)}
                 className="px-4 py-2.5 rounded-xl text-xs font-bold text-neutral-500 hover:bg-neutral-gray-50 cursor-pointer"
               >
                 Cancel
               </button>
-              <button 
-                onClick={clearAll} 
-                disabled={busy} 
+              <button
+                onClick={clearAll}
+                disabled={busy}
                 className="px-4 py-2.5 rounded-xl text-xs font-bold bg-danger hover:bg-red-800 text-neutral-white disabled:opacity-60 cursor-pointer shadow-md shadow-red-600/10 active:scale-95"
               >
                 {busy ? <Loader2 size={12} className="animate-spin inline" /> : 'Clear All'}

@@ -440,7 +440,7 @@ function OrderDetailsContent() {
                         {Number(order.total_order_amount) > 0 ? money(order.total_order_amount) : money(order.init_order_amount)}
                       </InfoRow>
                       {order.payment_method === 'offline_payment' && order.offlinePayments && (
-                        <button onClick={() => setShowOfflineModal(true)} className="self-start mt-2 px-3 py-1.5 rounded-xl bg-primary-50 hover:bg-primary-100 text-primary-600 text-[10px] font-extrabold border border-primary-100 cursor-pointer transition-colors">
+                        <button onClick={() => setShowOfflineModal(true)} className="self-start mt-2 px-3 py-1.5 rounded-xl bg-primary-50 hover:bg-primary-100 text-primary-800 text-[10px] font-extrabold border border-primary-100 cursor-pointer transition-colors">
                           See Payment Info
                         </button>
                       )}
@@ -452,13 +452,13 @@ function OrderDetailsContent() {
                     <Card className="w-full">
                       <div className="flex justify-between items-center mb-3">
                         <h6 className="text-xs font-extrabold text-neutral-gray-900 tracking-tight">Additional Payment</h6>
-                        <span className={`text-[10px] font-extrabold capitalize border px-2 py-0.5 rounded-full ${edit?.order_due_payment_status === 'paid' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-red-50 text-red-600 border-red-100'}`}>{edit?.order_due_payment_status}</span>
+                        <span className={`text-[10px] font-extrabold capitalize border px-2 py-0.5 rounded-full ${edit?.order_due_payment_status === 'paid' ? 'bg-green-100/70 text-green-800 border-green-200' : 'bg-red-50 text-red-600 border-red-100'}`}>{edit?.order_due_payment_status}</span>
                       </div>
                       <div className="flex flex-col gap-2 font-semibold text-xs text-neutral-600">
                         <InfoRow label="Payment method" className="justify-start gap-2">{titleCase(edit?.order_due_payment_method)}</InfoRow>
                         <InfoRow label="Due amount" className="justify-start gap-2">{money(edit?.order_due_amount)}</InfoRow>
                         {edit?.order_due_payment_method === 'offline_payment' && edit?.order_due_payment_info && (
-                          <button onClick={() => setShowDueModal(true)} className="self-start mt-2 px-3 py-1.5 rounded-xl bg-primary-50 hover:bg-primary-100 text-primary-600 text-[10px] font-extrabold border border-primary-100 cursor-pointer transition-colors">
+                          <button onClick={() => setShowDueModal(true)} className="self-start mt-2 px-3 py-1.5 rounded-xl bg-primary-50 hover:bg-primary-100 text-primary-800 text-[10px] font-extrabold border border-primary-100 cursor-pointer transition-colors">
                             See Payment Details
                           </button>
                         )}

@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
 import { resolveImage } from '@/lib/image';
 
 interface Banner {
@@ -17,55 +16,39 @@ interface Banner {
     status: number;
     key: string;
   };
-  product?: {
-    slug: string;
-  };
-  shop?: {
-    slug: string;
-  };
-  brand?: {
-    slug: string;
-  };
-  category?: {
-    slug: string;
-  };
+  product?: { slug: string };
+  shop?: { slug: string };
+  brand?: { slug: string };
+  category?: { slug: string };
 }
 
-const toProxyUrl = (url?: string): string => {
-  return resolveImage(url, '');
-};
+interface PopupBannerProps {
+  /**
+   * Pre-filtered Popup Banner passed from the server.
+   * When null / undefined, the component renders nothing.
+   */
+  initialBanner?: Banner | null;
+}
 
-export default function PopupBanner() {
+const toProxyUrl = (url?: string): string => resolveImage(url, '');
+
+export default function PopupBanner({ initialBanner }: PopupBannerProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
-  const [banner, setBanner] = useState<Banner | null>(null);
 
+  // When initialBanner is provided by the server, preload the image then show
+  // the popup — no API call needed.
   useEffect(() => {
-    api.getBanners()
-      .then((data) => {
-        const list = Array.isArray(data) ? data : [];
-        // Filter active Popup Banners
-        const activePopup = list.find(
-          (b: any) => b.published === 1 && b.banner_type === 'Popup Banner'
-        );
-        if (activePopup) {
-          const imageSrc = toProxyUrl(activePopup.photo_full_url?.path);
-          // Preload the image before triggering open/animation
-          const img = new Image();
-          img.src = imageSrc;
-          img.onload = () => {
-            setBanner(activePopup);
-            setOpen(true);
-          };
-          img.onerror = () => {
-            setBanner(activePopup);
-            setOpen(true);
-          };
-        }
-      })
-      .catch(() => {});
-  }, []);
+    if (!initialBanner) return;
+
+    const imageSrc = toProxyUrl(initialBanner.photo_full_url?.path);
+    const img = new Image();
+    img.src = imageSrc;
+    const reveal = () => setOpen(true);
+    img.onload  = reveal;
+    img.onerror = reveal; // still show even if image fails
+  }, [initialBanner]);
 
   const handleClose = () => {
     setIsExiting(true);
@@ -76,27 +59,23 @@ export default function PopupBanner() {
   };
 
   const handleBannerClick = () => {
-    if (!banner) return;
+    if (!initialBanner) return;
     setIsExiting(true);
     setTimeout(() => {
       setOpen(false);
       setIsExiting(false);
 
-      if (banner.resource_type === 'product' && banner.product?.slug) {
-        router.push(`/product/${banner.product.slug}`);
-      } else if (banner.resource_type === 'category' && banner.category?.slug) {
-        router.push(`/search?category=${banner.category.slug}`);
-      } else if (banner.resource_type === 'brand' && banner.brand?.slug) {
-        router.push(`/search?brand=${banner.brand.slug}`);
-      } else if (banner.resource_type === 'shop' && banner.shop?.slug) {
-        router.push(`/shop/${banner.shop.slug}`);
-      }
+      const b = initialBanner;
+      if (b.resource_type === 'product'  && b.product?.slug)  router.push(`/product/${b.product.slug}`);
+      else if (b.resource_type === 'category' && b.category?.slug) router.push(`/search?category=${b.category.slug}`);
+      else if (b.resource_type === 'brand'    && b.brand?.slug)    router.push(`/search?brand=${b.brand.slug}`);
+      else if (b.resource_type === 'shop'     && b.shop?.slug)     router.push(`/shop/${b.shop.slug}`);
     }, 250);
   };
 
-  if (!open || !banner) return null;
+  if (!open || !initialBanner) return null;
 
-  const imageSrc = toProxyUrl(banner.photo_full_url?.path);
+  const imageSrc = toProxyUrl(initialBanner.photo_full_url?.path);
 
   return (
     <div
@@ -121,9 +100,8 @@ export default function PopupBanner() {
           <X size={18} />
         </button>
 
-        {/* Inner banner wrapper with overflow hidden */}
+        {/* Banner image */}
         <div className="w-full rounded-3xl overflow-hidden shadow-2xl border border-neutral-gray-200/30 bg-neutral-white">
-          {/* Banner image wrapper */}
           <div onClick={handleBannerClick} className="w-full cursor-pointer hover:opacity-95 transition-opacity">
             <img
               src={imageSrc}

@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { api } from '@/lib/api';
 import { resolveImage } from '@/lib/image';
 
 interface Banner {
@@ -17,54 +16,31 @@ interface Banner {
     status: number;
     key: string;
   };
-  product?: {
-    slug: string;
-  };
-  shop?: {
-    slug: string;
-  };
-  brand?: {
-    slug: string;
-  };
-  category?: {
-    slug: string;
-  };
+  product?: { slug: string };
+  shop?: { slug: string };
+  brand?: { slug: string };
+  category?: { slug: string };
 }
 
-const toProxyUrl = (url?: string): string => {
-  return resolveImage(url, '');
-};
+interface MainSectionBannerProps {
+  /**
+   * Pre-filtered "Main Section Banner" list passed from the server.
+   * When provided, no client-side API call is made.
+   */
+  initialBanners?: Banner[];
+}
 
-export default function MainSectionBanner() {
+const toProxyUrl = (url?: string): string => resolveImage(url, '');
+
+export default function MainSectionBanner({ initialBanners }: MainSectionBannerProps) {
   const router = useRouter();
   const [current, setCurrent] = useState(0);
-  const [banners, setBanners] = useState<Banner[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let active = true;
-    api.getBanners()
-      .then((data) => {
-        if (!active) return;
-        const list = Array.isArray(data) ? data : [];
-        // Filter active Main Section Banners
-        const filtered = list.filter(
-          (b: any) => b.published === 1 && b.banner_type === 'Main Section Banner'
-        );
-        setBanners(filtered);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  // Use server-provided banners directly — no useEffect API call needed.
+  const banners: Banner[] = initialBanners ?? [];
 
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
-
   const minSwipeDistance = 50;
 
   useEffect(() => {
@@ -75,95 +51,41 @@ export default function MainSectionBanner() {
     return () => clearInterval(timer);
   }, [banners.length, current]);
 
-  const handleNext = () => {
-    setCurrent((prev) => (prev + 1) % banners.length);
-  };
+  const handleNext = () => setCurrent((prev) => (prev + 1) % banners.length);
+  const handlePrev = () => setCurrent((prev) => (prev - 1 + banners.length) % banners.length);
 
-  const handlePrev = () => {
-    setCurrent((prev) => (prev - 1 + banners.length) % banners.length);
-  };
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
-
-  const onTouchEnd = () => {
+  const onTouchStart  = (e: React.TouchEvent) => { setTouchEnd(null); setTouchStart(e.targetTouches[0].clientX); };
+  const onTouchMove   = (e: React.TouchEvent) => setTouchEnd(e.targetTouches[0].clientX);
+  const onTouchEnd    = () => {
     if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
-    if (isLeftSwipe) handleNext();
-    else if (isRightSwipe) handlePrev();
+    const d = touchStart - touchEnd;
+    if (d > minSwipeDistance) handleNext();
+    else if (d < -minSwipeDistance) handlePrev();
   };
-
-  const onMouseDown = (e: React.MouseEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.clientX);
-  };
-
-  const onMouseMove = (e: React.MouseEvent) => {
-    if (touchStart === null) return;
-    setTouchEnd(e.clientX);
-  };
-
-  const onMouseUp = () => {
+  const onMouseDown   = (e: React.MouseEvent) => { setTouchEnd(null); setTouchStart(e.clientX); };
+  const onMouseMove   = (e: React.MouseEvent) => { if (touchStart !== null) setTouchEnd(e.clientX); };
+  const onMouseUp     = () => {
     if (touchStart !== null && touchEnd !== null) {
-      const distance = touchStart - touchEnd;
-      if (distance > minSwipeDistance) handleNext();
-      else if (distance < -minSwipeDistance) handlePrev();
+      const d = touchStart - touchEnd;
+      if (d > minSwipeDistance) handleNext();
+      else if (d < -minSwipeDistance) handlePrev();
     }
     setTouchStart(null);
     setTouchEnd(null);
   };
 
   const handleBannerClick = (b: Banner) => {
-    if (b.resource_type === 'product' && b.product?.slug) {
-      router.push(`/product/${b.product.slug}`);
-    } else if (b.resource_type === 'category' && b.category?.slug) {
-      router.push(`/search?category=${b.category.slug}`);
-    } else if (b.resource_type === 'brand' && b.brand?.slug) {
-      router.push(`/search?brand=${b.brand.slug}`);
-    } else if (b.resource_type === 'shop' && b.shop?.slug) {
-      router.push(`/shop/${b.shop.slug}`);
-    }
+    if (b.resource_type === 'product'  && b.product?.slug)  router.push(`/product/${b.product.slug}`);
+    else if (b.resource_type === 'category' && b.category?.slug) router.push(`/search?category=${b.category.slug}`);
+    else if (b.resource_type === 'brand'    && b.brand?.slug)    router.push(`/search?brand=${b.brand.slug}`);
+    else if (b.resource_type === 'shop'     && b.shop?.slug)     router.push(`/shop/${b.shop.slug}`);
   };
 
-  if (loading) {
-    return (
-      <div className="w-full rounded-2xl animate-pulse h-[350px] md:h-[450px] min-h-[350px] bg-neutral-gray-50 border border-neutral-gray-200/50 relative overflow-hidden flex flex-col justify-between p-8 md:p-12">
-        {/* Skeleton Banner Title & Subtitle blocks */}
-        <div className="space-y-4 max-w-md mt-6">
-          <div className="h-8 md:h-10 bg-neutral-gray-200/80 rounded-lg w-3/4" />
-          <div className="h-4 md:h-5 bg-neutral-gray-200/70 rounded-lg w-1/2" />
-        </div>
-        
-        {/* Skeleton Action Button */}
-        <div className="h-10 md:h-12 bg-neutral-gray-200/80 rounded-xl w-36 mt-4" />
-
-        {/* Skeleton Slide Indicators */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-          <div className="w-5 h-1.5 rounded-full bg-neutral-gray-200/80" />
-          <div className="w-1.5 h-1.5 rounded-full bg-neutral-gray-200/60" />
-          <div className="w-1.5 h-1.5 rounded-full bg-neutral-gray-200/60" />
-        </div>
-      </div>
-    );
-  }
-
-  if (banners.length === 0) {
-    return null; // Return nothing if no active main section banners are configured
-  }
+  if (banners.length === 0) return null;
 
   return (
     <div className="relative w-full select-none group">
-      {/* Inner banner wrapper with overflow hidden */}
       <div className="relative w-full rounded-2xl overflow-hidden shadow-xl shadow-neutral-gray-200/40 h-[350px] md:h-[450px] min-h-[350px] bg-neutral-gray-50 border border-neutral-gray-200/60">
-        {/* Slides */}
         <div
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
@@ -186,16 +108,16 @@ export default function MainSectionBanner() {
               >
                 <img
                   src={imageSrc}
-                  alt="Banner promotion"
+                  alt="Section banner promotion"
                   className="w-full h-full object-cover select-none"
                   draggable="false"
+                  loading="lazy"
                 />
               </div>
             );
           })}
         </div>
 
-        {/* Dots Indicator */}
         {banners.length > 1 && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
             {banners.map((_, index) => (
@@ -211,7 +133,6 @@ export default function MainSectionBanner() {
         )}
       </div>
 
-      {/* Slide Navigation Arrows (Positioned 50% outside the banner container) */}
       {banners.length > 1 && (
         <>
           <button

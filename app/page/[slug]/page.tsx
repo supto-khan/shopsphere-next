@@ -1,48 +1,47 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import React from 'react';
 import { api } from '@/lib/api';
-import { Loader2 } from 'lucide-react';
 import Footer from '@/components/Footer';
+import { notFound } from 'next/navigation';
 
-export default function BusinessPage() {
-  const params = useParams();
-  const slug = params.slug as string;
-  const [loading, setLoading] = useState(true);
-  const [pageData, setPageData] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
+export const revalidate = 3600; // Revalidate business pages every hour in the background
 
-  useEffect(() => {
-    if (!slug) return;
-    setLoading(true);
-    setError(null);
-    api.getBusinessPages()
-      .then((pages) => {
-        const match = pages.find((p) => p.slug === slug);
-        if (match) {
-          setPageData(match);
-        } else {
-          setError('Page not found');
-        }
-      })
-      .catch((err) => {
-        setError('Failed to load page content');
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [slug]);
+export async function generateStaticParams() {
+  try {
+    const pages = await api.getBusinessPages();
+    return pages.map((p) => ({
+      slug: p.slug,
+    }));
+  } catch (err) {
+    console.error('Failed to generate static params for business pages', err);
+    return [];
+  }
+}
+
+interface PageProps {
+  params: Promise<{ slug: string }>;
+}
+
+export default async function BusinessPage({ params }: PageProps) {
+  const { slug } = await params;
+  let pageData: any = null;
+  let error: string | null = null;
+
+  try {
+    const pages = await api.getBusinessPages();
+    const match = pages.find((p) => p.slug === slug);
+    if (match) {
+      pageData = match;
+    } else {
+      notFound();
+    }
+  } catch (err) {
+    error = 'Failed to load page content';
+  }
 
   return (
     <div className="w-full min-h-[calc(100vh-65px)] overflow-y-auto bg-neutral-gray-50/50">
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-32">
-            <Loader2 className="animate-spin text-primary-600 mb-3" size={28} />
-            <p className="text-xs text-neutral-gray-500 font-semibold">Loading page...</p>
-          </div>
-        ) : error ? (
+        {error ? (
           <div className="bg-neutral-white border border-neutral-gray-200/60 rounded-3xl p-12 text-center shadow-sm">
             <p className="text-sm font-bold text-red-500">{error}</p>
           </div>
@@ -70,7 +69,7 @@ export default function BusinessPage() {
               )}
               <div 
                 className="text-xs font-semibold text-neutral-gray-700 leading-relaxed space-y-4 prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ __html: pageData.description }}
+                dangerouslySetInnerHTML={{ __html: pageData.description || '' }}
               />
             </div>
           </div>

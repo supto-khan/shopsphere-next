@@ -108,7 +108,7 @@ export default function TrackOrderPage() {
   return (
     <div className="w-full min-h-[calc(100vh-65px)] overflow-y-auto bg-neutral-gray-50/50">
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
-        
+
         {/* Search Card */}
         <div className="bg-neutral-white border border-neutral-gray-200/60 rounded-3xl p-6 sm:p-8 shadow-xl shadow-neutral-gray-100/30 mb-8">
           <div className="text-center max-w-md mx-auto mb-8">
@@ -130,7 +130,7 @@ export default function TrackOrderPage() {
                 className="w-full pl-12 pr-4 py-3.5 border border-neutral-gray-250/70 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary-600/30 focus:border-primary-500 bg-neutral-gray-50/50"
               />
             </div>
-            
+
             <div className="relative flex-1">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-gray-400">
                 <Phone size={14} />
@@ -171,7 +171,7 @@ export default function TrackOrderPage() {
         {/* Results Sections */}
         {hasSearched && orderInfo && (
           <div className="space-y-6">
-            
+
             {/* Order Overview Header Card */}
             <div className="bg-neutral-white border border-neutral-gray-200/60 rounded-3xl p-6 shadow-md flex flex-wrap gap-4 items-center justify-between">
               <div>
@@ -205,10 +205,10 @@ export default function TrackOrderPage() {
 
               <div>
                 <span className="text-[10px] font-bold text-neutral-gray-400 uppercase tracking-widest block mb-1">Status</span>
-                <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                  orderInfo.order_status === 'delivered' ? 'bg-green-50 text-green-600 border border-green-100' :
-                  orderInfo.order_status === 'canceled' ? 'bg-red-50 text-red-600 border border-red-100' :
-                  'bg-primary-50 text-primary-600 border border-primary-100'
+                <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${
+                  orderInfo.order_status === 'delivered' ? 'bg-green-100/70 text-green-800 border-green-200' :
+                  orderInfo.order_status === 'canceled' ? 'bg-red-50 text-red-600 border-red-100' :
+                  'bg-primary-100/70 text-primary-800 border-primary-200'
                 }`}>
                   {getOrderStatusDisplay(orderInfo.order_status)}
                 </span>
@@ -219,11 +219,11 @@ export default function TrackOrderPage() {
             {orderInfo.order_status !== 'canceled' && orderInfo.order_status !== 'failed' && (
               <div className="bg-neutral-white border border-neutral-gray-200/60 rounded-3xl p-6 sm:p-8 shadow-md">
                 <h4 className="text-sm font-black text-neutral-gray-900 uppercase tracking-wider mb-8">Delivery Timeline</h4>
-                
+
                 <div className="relative flex flex-col md:flex-row justify-between items-start md:items-center gap-8 md:gap-0 mt-4">
                   {/* Timeline progress line background (for desktop) */}
                   <div className="absolute top-1/2 left-0 right-0 h-1 bg-neutral-gray-100 -translate-y-1/2 hidden md:block z-0" />
-                  
+
                   {timelineSteps.map((step, idx) => {
                     const isCompleted = idx <= currentStatusIndex;
                     const isActive = idx === currentStatusIndex;
@@ -283,7 +283,7 @@ export default function TrackOrderPage() {
                       <div key={item.id} className="flex items-center gap-4 py-3.5 first:pt-0 last:pb-0">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={src || '/assets/img/placeholder.jpg'}
+                          src={src || '/assets/img/placeholder.webp'}
                           alt={item.product_details?.name}
                           className="w-14 h-14 rounded-xl border border-neutral-gray-200/40 object-cover shrink-0"
                         />

@@ -140,7 +140,7 @@ export default function Footer({ config: propConfig }: FooterProps) {
   // Use provided config or fallback to empty object if not loaded yet
   const config = propConfig || {};
   // Extract clean logo path
-  let footerLogo = "/shopsphere.png";
+  let footerLogo = "/shopsphere.webp";
   const logoObj = config?.footer_logo?.path ? config.footer_logo : config?.company_logo;
   if (logoObj && typeof logoObj === "object" && logoObj.path) {
     const cleanPath = logoObj.path.replace(/^https?:\/\/[^\/]+/, "");
@@ -248,12 +248,6 @@ export default function Footer({ config: propConfig }: FooterProps) {
                   src={footerLogo}
                   alt={config?.company_name || "Logo"}
                   className="h-10 w-auto object-contain"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    // Prevent infinite loop if fallback image also fails
-                    target.onerror = null;
-                    target.src = "/shopsphere.png";
-                  }}
                 />
               </Link>
               <p className="text-xs text-neutral-gray-500 leading-relaxed font-medium">

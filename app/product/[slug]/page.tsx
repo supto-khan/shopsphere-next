@@ -28,12 +28,12 @@ import {
 
 /** Resolve a backend image URL to the Next.js proxy path. */
 function toProxyUrl(url?: any): string {
-  return resolveImage(url, "/placeholder.jpg");
+  return resolveImage(url, "/placeholder.webp");
 }
 
 /** Extract a usable image URL from either a string or a full_url object. */
 function galleryImage(item: any): string {
-  if (!item) return "/placeholder.jpg";
+  if (!item) return "/placeholder.webp";
   if (typeof item === "string") return toProxyUrl(item);
   return toProxyUrl(item?.path ?? item?.image_name ?? "");
 }
@@ -155,7 +155,7 @@ function SellerProductCard({ product: p }: { product: Product }) {
   }
 
   const fullUrlObj = (p as any).thumbnail_full_url;
-  let imageSrc = "/placeholder.jpg";
+  let imageSrc = "/placeholder.webp";
   if (fullUrlObj?.path && !fullUrlObj.path.includes("def.png"))
     imageSrc = toProxyUrl(fullUrlObj.path);
   else if (p.thumbnail && !p.thumbnail.includes("def.png"))
@@ -231,7 +231,7 @@ function SimilarProductCard({ product: p }: { product: Product }) {
   }
 
   const fullUrlObj = (p as any).thumbnail_full_url;
-  let imageSrc = "/placeholder.jpg";
+  let imageSrc = "/placeholder.webp";
   if (fullUrlObj?.path && !fullUrlObj.path.includes("def.png"))
     imageSrc = toProxyUrl(fullUrlObj.path);
   else if (p.thumbnail && !p.thumbnail.includes("def.png"))
@@ -484,7 +484,7 @@ export default function ProductDetailPage() {
         ? [product.thumbnail]
         : [];
   const images: string[] =
-    imageSources.length > 0 ? imageSources.map(galleryImage) : ["/placeholder.jpg"];
+    imageSources.length > 0 ? imageSources.map(galleryImage) : ["/placeholder.webp"];
 
   const colors = parseColors(product.colors);
   const choiceOptions = parseChoiceOptions(product.choice_options);
@@ -791,26 +791,26 @@ export default function ProductDetailPage() {
                         <>
                           <div className="flex items-center gap-1 bg-primary-50 px-2 py-0.5 rounded-lg border border-primary-100">
                             <StarRating rating={avgRating} size={13} showValue={false} />
-                            <span className="text-primary-600 text-[10px] font-extrabold">
+                            <span className="text-primary-800 text-[10px] font-extrabold">
                               ({avgRating.toFixed(1)})
                             </span>
                           </div>
                           <button
                             onClick={() => setTab("reviews")}
-                            className="hover:text-primary-600 cursor-pointer transition-colors"
+                            className="hover:text-primary-850 cursor-pointer transition-colors"
                           >
-                            <span className="text-primary-600 font-extrabold">{reviewsCount}</span>{" "}
+                            <span className="text-primary-800 font-extrabold">{reviewsCount}</span>{" "}
                             reviews
                           </button>
                           <span className="w-px h-3 bg-neutral-gray-200/80" />
                         </>
                       )}
                       <span>
-                        <span className="text-primary-600 font-extrabold">{orderCount}</span> orders
+                        <span className="text-primary-800 font-extrabold">{orderCount}</span> orders
                       </span>
                       <span className="w-px h-3 bg-neutral-gray-200/80" />
                       <span>
-                        <span className="text-primary-600 font-extrabold">{wishlistCount}</span>{" "}
+                        <span className="text-primary-800 font-extrabold">{wishlistCount}</span>{" "}
                         wishlisted
                       </span>
                     </div>
@@ -1205,7 +1205,7 @@ export default function ProductDetailPage() {
                                     <div className="flex flex-wrap gap-2 mt-3">
                                       {attachments.map((att: any, ai: number) => {
                                         const src = toProxyUrl(att?.path || att);
-                                        if (src === "/placeholder.jpg") return null;
+                                        if (src === "/placeholder.webp") return null;
                                         return (
                                           <button
                                             key={ai}
@@ -1311,7 +1311,7 @@ export default function ProductDetailPage() {
                   className="flex items-center gap-3 group cursor-pointer"
                 >
                   <div className="w-14 h-14 rounded-2xl overflow-hidden border border-neutral-gray-200 bg-primary-50 shrink-0 flex items-center justify-center shadow-sm">
-                    {shopImage !== "/placeholder.jpg" ? (
+                    {shopImage !== "/placeholder.webp" ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={shopImage} alt={shopName} className="w-full h-full object-cover" />
                     ) : (

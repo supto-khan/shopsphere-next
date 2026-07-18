@@ -17,7 +17,7 @@ import {
 /* ─────────────────── helpers ─────────────────── */
 
 function toProxyUrl(url?: any): string {
-  return resolveImage(url, '/placeholder.jpg');
+  return resolveImage(url, '/placeholder.webp');
 }
 
 const CURRENCY = '৳';
@@ -415,7 +415,7 @@ export default function ShopViewPage() {
 
               {/* Banner image or placeholder */}
               <div className="w-full h-full rounded-2xl overflow-hidden">
-                {bannerImg !== '/placeholder.jpg' ? (
+                {bannerImg !== '/placeholder.webp' ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={bannerImg} alt={shopName} className="w-full h-full object-cover" />
                 ) : (
@@ -453,7 +453,7 @@ export default function ShopViewPage() {
 
                   {/* Shop logo / icon */}
                   <div className="shrink-0 w-10 h-10 rounded-lg overflow-hidden border border-neutral-gray-200 bg-neutral-gray-100 flex items-center justify-center">
-                    {logoImg !== '/placeholder.jpg' ? (
+                    {logoImg !== '/placeholder.webp' ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={logoImg} alt={shopName} className="w-full h-full object-cover" />
                     ) : (
@@ -536,7 +536,7 @@ export default function ShopViewPage() {
         {/* ── Filters + Products Grid Layout ─────────────────────── */}
         {!shopLoading && !shopError && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mt-8">
-            
+
             {/* Left Filter Sidebar */}
             <aside className="lg:col-span-3 bg-neutral-white border border-neutral-gray-200/50 rounded-3xl p-6 space-y-6 shadow-xl shadow-neutral-gray-100/30 sticky top-6">
               <div className="flex items-center justify-between border-b border-neutral-gray-200/50 pb-4">
@@ -547,7 +547,7 @@ export default function ShopViewPage() {
                   <span>Store Filters</span>
                 </div>
                 {(productType !== 'all' || sortBy !== 'latest' || minPrice || maxPrice || selectedCats.length > 0 || selectedBrands.length > 0 || selectedPublishers.length > 0 || selectedAuthors.length > 0) && (
-                  <button 
+                  <button
                     onClick={clearAllFilters}
                     className="text-[11px] text-primary-600 hover:text-primary-800 font-bold flex items-center gap-1 cursor-pointer transition-all duration-300 hover:scale-105 bg-primary-50 px-2.5 py-1.5 rounded-xl border border-primary-100"
                   >
@@ -574,8 +574,8 @@ export default function ShopViewPage() {
                         type="button"
                         onClick={() => setProductType(opt.value as any)}
                         className={`py-2 text-[11px] font-bold rounded-xl transition-all duration-300 cursor-pointer ${
-                          active 
-                            ? 'bg-neutral-white text-primary-600 shadow-sm border border-neutral-gray-200/30' 
+                          active
+                            ? 'bg-neutral-white text-primary-600 shadow-sm border border-neutral-gray-200/30'
                             : 'text-neutral-gray-500 hover:text-neutral-gray-900'
                         }`}
                       >
@@ -588,9 +588,9 @@ export default function ShopViewPage() {
 
               {/* 2. Sort Order */}
               <div className="border-b border-neutral-gray-200/40 pb-5">
-                <button 
+                <button
                   type="button"
-                  onClick={() => toggleSection('sort')} 
+                  onClick={() => toggleSection('sort')}
                   className="w-full flex justify-between items-center text-xs font-bold uppercase tracking-wider text-neutral-gray-400 mb-2.5 cursor-pointer text-left"
                 >
                   <span>Sort By</span>
@@ -628,9 +628,9 @@ export default function ShopViewPage() {
 
               {/* 3. Price Filter */}
               <div className="border-b border-neutral-gray-200/40 pb-5">
-                <button 
+                <button
                   type="button"
-                  onClick={() => toggleSection('price')} 
+                  onClick={() => toggleSection('price')}
                   className="w-full flex justify-between items-center text-xs font-bold uppercase tracking-wider text-neutral-gray-400 mb-2.5 cursor-pointer text-left"
                 >
                   <span>Price Range</span>
@@ -673,9 +673,9 @@ export default function ShopViewPage() {
 
               {/* 4. Categories list */}
               <div className="border-b border-neutral-gray-200/40 pb-5">
-                <button 
+                <button
                   type="button"
-                  onClick={() => toggleSection('categories')} 
+                  onClick={() => toggleSection('categories')}
                   className="w-full flex justify-between items-center text-xs font-bold uppercase tracking-wider text-neutral-gray-400 mb-2.5 cursor-pointer text-left"
                 >
                   <span className="flex items-center gap-1.5">
@@ -695,9 +695,9 @@ export default function ShopViewPage() {
 
               {/* 5. Brands list */}
               <div className="border-b border-neutral-gray-200/40 pb-5">
-                <button 
+                <button
                   type="button"
-                  onClick={() => toggleSection('brands')} 
+                  onClick={() => toggleSection('brands')}
                   className="w-full flex justify-between items-center text-xs font-bold uppercase tracking-wider text-neutral-gray-400 mb-2.5 cursor-pointer text-left"
                 >
                   <span className="flex items-center gap-1.5">
@@ -739,9 +739,9 @@ export default function ShopViewPage() {
               {/* 6. Publishers (digital-only) */}
               {isDigitalSectionVisible && publishers.length > 0 && (
                 <div className="border-b border-neutral-gray-200/40 pb-5">
-                  <button 
+                  <button
                     type="button"
-                    onClick={() => toggleSection('publishers')} 
+                    onClick={() => toggleSection('publishers')}
                     className="w-full flex justify-between items-center text-xs font-bold uppercase tracking-wider text-neutral-gray-400 mb-2.5 cursor-pointer text-left"
                   >
                     <span className="flex items-center gap-1.5">
@@ -784,9 +784,9 @@ export default function ShopViewPage() {
               {/* 7. Authors (digital-only) */}
               {isDigitalSectionVisible && authors.length > 0 && (
                 <div>
-                  <button 
+                  <button
                     type="button"
-                    onClick={() => toggleSection('authors')} 
+                    onClick={() => toggleSection('authors')}
                     className="w-full flex justify-between items-center text-xs font-bold uppercase tracking-wider text-neutral-gray-400 mb-2.5 cursor-pointer text-left"
                   >
                     <span className="flex items-center gap-1.5">
@@ -829,7 +829,7 @@ export default function ShopViewPage() {
 
             {/* Right Products list */}
             <section className="lg:col-span-9 flex flex-col gap-6">
-              
+
               {/* Filter bar & Search */}
               <div className="flex flex-wrap gap-3 items-center">
                 <div className="relative flex-1 min-w-[200px]">

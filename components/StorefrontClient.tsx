@@ -5,14 +5,51 @@ import Sidebar from '@/components/Sidebar';
 import ProductCard from '@/components/ProductCard';
 import dynamic from 'next/dynamic';
 
-const BrandSlider = dynamic(() => import('@/components/BrandSlider'), { ssr: false });
-const HeroSlider = dynamic(() => import('@/components/HeroSlider'), { ssr: false });
-const ProductSlider = dynamic(() => import('@/components/ProductSlider'), { ssr: false });
+const BrandSlider = dynamic(() => import('@/components/BrandSlider'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[116px] bg-neutral-gray-55/20 border border-neutral-gray-200/50 rounded-xl animate-pulse flex items-center justify-between p-4 overflow-hidden">
+      {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+        <div key={i} className="flex flex-col items-center justify-center shrink-0 w-20">
+          <div className="w-12 h-12 rounded-full bg-neutral-gray-55/30" />
+          <div className="w-10 h-2 bg-neutral-gray-55/20 rounded mt-1.5" />
+        </div>
+      ))}
+    </div>
+  ),
+});
+const HeroSlider = dynamic(() => import('@/components/HeroSlider'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full rounded-2xl animate-pulse h-[350px] md:h-[450px] min-h-[350px] bg-neutral-gray-55/20 border border-neutral-gray-200/50 relative overflow-hidden flex flex-col justify-between p-8 md:p-12">
+      <div className="space-y-4 max-w-md mt-6">
+        <div className="h-8 md:h-10 bg-neutral-gray-55/40 rounded-lg w-3/4" />
+        <div className="h-4 md:h-5 bg-neutral-gray-55/30 rounded-lg w-1/2" />
+      </div>
+      <div className="h-10 md:h-12 bg-neutral-gray-55/40 rounded-xl w-36 mt-4" />
+    </div>
+  ),
+});
+const ProductSlider = dynamic(() => import('@/components/ProductSlider'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 animate-pulse overflow-hidden">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div key={i} className="border border-neutral-gray-200/50 rounded p-3 flex flex-col items-center">
+          <div className="w-full aspect-[4/3] bg-neutral-gray-55/30 rounded" />
+          <div className="w-3/4 h-3 bg-neutral-gray-55/20 rounded mt-2.5" />
+          <div className="w-1/2 h-2.5 bg-neutral-gray-55/20 rounded mt-1.5" />
+        </div>
+      ))}
+    </div>
+  ),
+});
 
 import PopupBanner from '@/components/PopupBanner';
 import FooterBanner from '@/components/FooterBanner';
 import MainSectionBanner from '@/components/MainSectionBanner';
 import { api, Product, Brand, Category } from '@/lib/api';
+import { PLACEHOLDER_IMAGE } from '@/lib/image';
 import { useAppStore } from '@/lib/store';
 import { ChevronRight } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -55,6 +92,10 @@ interface StorefrontClientProps {
   initialFeatured: Product[];
   initialCategorySections: { category: Category; products: Product[] }[];
   initialBanners?: any[];
+  /** Pre-filtered banner lists passed from the server to eliminate client-side fetching */
+  initialSectionBanners?: any[];
+  initialFooterBanners?: any[];
+  initialPopupBanner?: any | null;
 }
 
 export default function StorefrontClient({
@@ -68,6 +109,9 @@ export default function StorefrontClient({
   initialFeatured,
   initialCategorySections,
   initialBanners = [],
+  initialSectionBanners = [],
+  initialFooterBanners = [],
+  initialPopupBanner = null,
 }: StorefrontClientProps) {
   const {
     selectedCategoryId,
@@ -202,7 +246,7 @@ export default function StorefrontClient({
 
   return (
     <div onScroll={handleScroll} className="flex-1 overflow-y-auto h-[calc(100vh-65px)] bg-neutral-white">
-      <PopupBanner />
+      <PopupBanner initialBanner={initialPopupBanner} />
       <div className="flex min-w-0">
         <Sidebar />
 
@@ -290,6 +334,11 @@ export default function StorefrontClient({
                 <HeroSlider initialBanners={initialBanners} />
               )}
 
+              {/* Main Section Banner — uses server-prefetched data, no client fetch */}
+              {initialSectionBanners && initialSectionBanners.length > 0 && (
+                <MainSectionBanner initialBanners={initialSectionBanners} />
+              )}
+
               {/* Best Sellers */}
               {topSellers.length > 0 && (
                 <div className="bg-gradient-to-br from-primary-50/25 via-neutral-white to-neutral-white border border-neutral-gray-200/50 p-5 md:p-6 shadow-sm">
@@ -304,8 +353,6 @@ export default function StorefrontClient({
                   </div>
                 </div>
               )}
-
-              <MainSectionBanner />
 
               {/* Brands */}
               {brands.length > 0 && (
@@ -335,7 +382,7 @@ export default function StorefrontClient({
                         const cleanPath = shopBanner.replace(/^https?:\/\/[^\/]+/, '');
                         bannerImg = cleanPath.replace('storage/app/public', 'storage');
                       } else {
-                        bannerImg = '/placeholder.jpg';
+                        bannerImg = PLACEHOLDER_IMAGE;
                       }
 
                       let logoImg = '';
@@ -348,7 +395,7 @@ export default function StorefrontClient({
                         const cleanPath = sellerImage.replace(/^https?:\/\/[^\/]+/, '');
                         logoImg = cleanPath.replace('storage/app/public', 'storage');
                       } else {
-                        logoImg = '/placeholder.jpg';
+                        logoImg = PLACEHOLDER_IMAGE;
                       }
 
                       const displayName = shop.name || (seller.id === 0 ? 'In-House Shop' : (seller.f_name ? `${seller.f_name} ${seller.l_name}` : 'Vendor Shop'));
@@ -458,7 +505,8 @@ export default function StorefrontClient({
                 </div>
               ))}
 
-              <FooterBanner />
+              {/* Footer Banner — uses server-prefetched data, no client fetch */}
+              <FooterBanner initialBanners={initialFooterBanners} />
             </div>
           )}
         </main>

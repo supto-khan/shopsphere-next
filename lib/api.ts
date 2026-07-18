@@ -117,9 +117,9 @@ let _guestIdInflight: Promise<string | null> | null = null;
 // Helper to get or retrieve guest ID
 async function getGuestId(): Promise<string | null> {
   if (typeof window === 'undefined') {
-    // Return null on the server to prevent Next.js from opting out of static generation (SSG/ISR).
-    // The client-side will retrieve/generate the guest ID and send it in subsequent API requests.
-    return null;
+    // Return a constant guest ID on the server to prevent Next.js from opting out of static generation.
+    // A fallback constant guest ID is sufficient for public catalog fetching during static generation / revalidation.
+    return 'server_guest';
   }
 
   // Fast path: already in localStorage
@@ -290,7 +290,12 @@ async function apiUpload<T>(endpoint: string, formData: FormData): Promise<T> {
 }
 
 function extractProducts(data: any): Product[] {
-  if (Array.isArray(data)) return data;
+  if (Array.isArray(data)) {
+    if (data.length > 0 && typeof data[0] !== 'object') {
+      return [];
+    }
+    return data;
+  }
   if (data && typeof data === 'object') {
     if (Array.isArray(data.products)) return data.products;
     if (Array.isArray(data.data)) return data.data;
@@ -299,7 +304,12 @@ function extractProducts(data: any): Product[] {
 }
 
 function extractBrands(data: any): Brand[] {
-  if (Array.isArray(data)) return data;
+  if (Array.isArray(data)) {
+    if (data.length > 0 && typeof data[0] !== 'object') {
+      return [];
+    }
+    return data;
+  }
   if (data && typeof data === 'object') {
     if (Array.isArray(data.brands)) return data.brands;
     if (Array.isArray(data.data)) return data.data;
@@ -560,22 +570,31 @@ export const api = {
 
   syncCart: async (cartItems: { product: any; quantity: number }[]): Promise<any> => {
     try {
+      // Step 1: Clear server-side cart in one DELETE request
       await apiFetch<any>('/cart/remove-all', {
         method: 'DELETE',
         body: JSON.stringify({ key: 'all' }),
       });
-      for (const item of cartItems) {
-        const res = await apiFetch<any>('/cart/add', {
-          method: 'POST',
-          body: JSON.stringify({
-            id: item.product.id,
-            quantity: item.quantity,
-          }),
-        });
-        if (res && res.status === 0) {
-          return { success: false, error: res.message || `Failed to sync ${item.product.name} with server cart.` };
-        }
+
+      // Step 2: Fire ALL add-to-cart requests in parallel instead of sequentially.
+      // Turns an N-item cart from N+1 serial requests into 2 parallel bursts.
+      const results = await Promise.all(
+        cartItems.map((item) =>
+          apiFetch<any>('/cart/add', {
+            method: 'POST',
+            body: JSON.stringify({
+              id: item.product.id,
+              quantity: item.quantity,
+            }),
+          })
+        )
+      );
+
+      const failed = results.find((res) => res && res.status === 0);
+      if (failed) {
+        return { success: false, error: failed.message || 'Failed to sync a cart item with server.' };
       }
+
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || 'Failed to sync cart' };

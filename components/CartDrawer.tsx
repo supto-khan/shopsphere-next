@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAppStore } from '@/lib/store';
 import { ShoppingBag, X, Plus, Minus, Trash2, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
-import { resolveImage } from '@/lib/image';
+import { resolveImage, PLACEHOLDER_IMAGE } from '@/lib/image';
 import { useRouter } from 'next/navigation';
 
 export default function CartDrawer() {
@@ -149,7 +149,7 @@ export default function CartDrawer() {
                 } else if (item.product.thumbnail && !item.product.thumbnail.includes('def.png')) {
                   imageSrc = resolveImage(`/storage/product/thumbnail/${item.product.thumbnail}`);
                 } else {
-                  imageSrc = '/placeholder.jpg';
+                  imageSrc = PLACEHOLDER_IMAGE;
                 }
 
                 return (

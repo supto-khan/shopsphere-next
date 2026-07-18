@@ -1,12 +1,17 @@
-'use client';
-
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { Suspense } from 'react';
 import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
-import { api, Blog, BACKEND_URL } from '@/lib/api';
+import { getCachedBlogDetails, getCachedConfig } from '@/lib/server-cache';
 import Footer from '@/components/Footer';
+import { Blog, BACKEND_URL } from '@/lib/api';
 
-// Helper to format image URLs
+// Cache details for 1 hour
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  // Pre-generate dynamic paths can be returned here or computed on demand
+  return [];
+}
+
 const getImageUrl = (imgObj: any) => {
   if (imgObj && imgObj.path) {
     if (imgObj.path.startsWith('http')) {
@@ -14,85 +19,60 @@ const getImageUrl = (imgObj: any) => {
     }
     return `${BACKEND_URL}/${imgObj.path}`;
   }
-  return '/placeholder.jpg';
+  return '/placeholder.webp';
 };
 
-function BlogDetailsContent() {
-  const params = useParams();
-  const searchParams = useSearchParams();
-  const slug = params.slug as string;
-  const source = searchParams.get('source') || '';
+interface BlogDetailsPageProps {
+  params: {
+    slug: string;
+  };
+  searchParams: {
+    source?: string;
+  };
+}
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<{
-    blogData: Blog;
-    popularBlogList: Blog[];
-    articleLinks: { id: string; text: string }[];
-    updatedDescription: string;
-    downloadAppStatus?: number | boolean;
-    appTitleData?: any;
-  } | null>(null);
+export default async function BlogDetailsPage({
+  params,
+  searchParams,
+}: BlogDetailsPageProps) {
+  const slug = params.slug;
+  const source = searchParams.source || '';
 
-  useEffect(() => {
-    if (!slug) return;
-    setLoading(true);
-    setError(null);
-    api.getBlogDetails(slug, source)
-      .then((res) => {
-        setData(res);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Failed to load blog details', err);
-        setError('Blog details not found or failed to load.');
-        setLoading(false);
-      });
-  }, [slug, source]);
+  const [data, config] = await Promise.all([
+    getCachedBlogDetails(slug, source).catch(() => null),
+    getCachedConfig().catch(() => null),
+  ]);
 
-  if (loading) {
-    return (
-      <div className="w-full flex flex-col min-h-screen">
-        <div className="flex-1 flex items-center justify-center py-20">
-          <div className="w-12 h-12 border-4 border-primary-400 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
-
-  if (error || !data) {
+  if (!data) {
     return (
       <div className="w-full flex flex-col min-h-screen">
         <div className="flex-1 flex flex-col items-center justify-center py-20">
           <span className="text-4xl mb-4">⚠️</span>
           <h3 className="text-lg font-bold text-neutral-gray-900 mb-2">Blog Not Found</h3>
-          <p className="text-sm text-neutral-gray-600 mb-4">{error}</p>
+          <p className="text-sm text-neutral-gray-650 mb-4">Blog details not found or failed to load.</p>
           <Link href="/blog" className="px-4 py-2 bg-primary-600 text-neutral-white font-semibold rounded hover:bg-primary-700 transition">
             Back to Blogs
           </Link>
         </div>
-        <Footer />
+        <Footer config={config} />
       </div>
     );
   }
 
-  const { blogData, popularBlogList, articleLinks, updatedDescription, downloadAppStatus } = data;
-  const pageUrl = typeof window !== 'undefined' ? window.location.href : '';
+  const { blogData, popularBlogList, articleLinks, updatedDescription } = data;
 
+  // Stable sharing endpoints computed on the server side
+  const pageUrl = `https://shopsphere.prosolverhq.com/blog/${slug}`;
   const shareLinks = {
     facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}`,
     twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(blogData.title)}&url=${encodeURIComponent(pageUrl)}`,
     linkedin: `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(pageUrl)}&title=${encodeURIComponent(blogData.title)}`,
-    whatsapp: `https://api.whatsapp.com/send?text=${encodeURIComponent(blogData.title + ' ' + pageUrl)}`
+    whatsapp: `https://api.whatsapp.com/send?text=${encodeURIComponent(blogData.title + ' ' + pageUrl)}`,
   };
 
   return (
     <div className="w-full min-h-[calc(100vh-65px)] overflow-y-auto bg-neutral-white">
-      {/* Blog Root Container */}
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        {/* Main Columns */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
           {/* Left Column: In-Article Anchor Navigation */}
@@ -103,11 +83,11 @@ function BlogDetailsContent() {
                   In this article
                 </h5>
                 <ul className="space-y-3">
-                  {articleLinks.map((link) => (
+                  {articleLinks.map((link: any) => (
                     <li key={link.id}>
                       <a
                         href={`#${link.id}`}
-                        className="text-sm text-neutral-gray-600 hover:text-primary-600 transition block truncate"
+                        className="text-sm text-neutral-gray-650 hover:text-primary-600 transition block truncate"
                       >
                         {link.text}
                       </a>
@@ -145,7 +125,7 @@ function BlogDetailsContent() {
               </h1>
 
               {/* Writer and Meta Info */}
-              <div className="flex flex-wrap justify-center items-center gap-4 text-sm text-neutral-gray-600">
+              <div className="flex flex-wrap justify-center items-center gap-4 text-sm text-neutral-gray-650">
                 {blogData.writer && (
                   <span className="flex items-center gap-1.5 border-r border-neutral-gray-200 pr-4">
                     <span>By</span>
@@ -181,21 +161,20 @@ function BlogDetailsContent() {
 
           {/* Right Column: Sharing & App Promo */}
           <div className="lg:col-span-3 lg:sticky lg:top-6 hidden lg:flex flex-col gap-6">
-            {/* Share Options */}
             <div className="bg-neutral-white border border-neutral-gray-200/50 rounded-xl p-5 shadow-sm text-center">
               <h5 className="font-bold text-neutral-gray-900 mb-4">Share Now</h5>
               <div className="flex justify-center gap-3">
                 <a href={shareLinks.facebook} target="_blank" rel="noopener noreferrer" className="hover:scale-105 transition">
-                  <img src="/assets/front-end/img/blogs/facebook.svg" width="32" height="32" alt="Facebook" className="w-8 h-8 rounded-full" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                  <span className="text-2xl">📘</span>
                 </a>
                 <a href={shareLinks.twitter} target="_blank" rel="noopener noreferrer" className="hover:scale-105 transition">
-                  <img src="/assets/front-end/img/blogs/twitter.svg" width="32" height="32" alt="Twitter" className="w-8 h-8 rounded-full" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                  <span className="text-2xl">🐦</span>
                 </a>
                 <a href={shareLinks.linkedin} target="_blank" rel="noopener noreferrer" className="hover:scale-105 transition">
-                  <img src="/assets/front-end/img/blogs/linkedin.svg" width="32" height="32" alt="LinkedIn" className="w-8 h-8 rounded-full" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                  <span className="text-2xl">💼</span>
                 </a>
                 <a href={shareLinks.whatsapp} target="_blank" rel="noopener noreferrer" className="hover:scale-105 transition">
-                  <img src="/assets/front-end/img/blogs/whatsapp.svg" width="32" height="32" alt="WhatsApp" className="w-8 h-8 rounded-full" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                  <span className="text-2xl">💬</span>
                 </a>
               </div>
             </div>
@@ -204,7 +183,6 @@ function BlogDetailsContent() {
 
         {/* Bottom Area (Mobile Share & Popular Articles) */}
         <div className="mt-8 border-t border-neutral-gray-50 pt-8">
-          {/* Mobile Social Share Bar */}
           <div className="lg:hidden text-center mb-8 pb-8 border-b border-neutral-gray-50">
             <h4 className="text-sm font-bold text-neutral-gray-900 mb-3">Share this article</h4>
             <div className="flex justify-center gap-4">
@@ -215,7 +193,7 @@ function BlogDetailsContent() {
             </div>
           </div>
 
-          {/* Popular Articles Slider/Grid */}
+          {/* Popular Articles */}
           <div>
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-neutral-gray-900">
@@ -241,11 +219,12 @@ function BlogDetailsContent() {
                       src={getImageUrl(blog.thumbnail_full_url)}
                       alt={blog.title}
                       className="w-full h-full object-cover hover:scale-105 transition duration-500"
+                      loading="lazy"
                     />
                   </Link>
                   <div className="p-4 flex-1 flex flex-col justify-between">
                     <div>
-                      <div className="text-xs text-neutral-gray-600 mb-1">
+                      <div className="text-xs text-neutral-gray-650 mb-1">
                         {new Date(blog.publish_date).toLocaleDateString()}
                       </div>
                       <Link href={`/blog/${blog.slug}`}>
@@ -261,19 +240,7 @@ function BlogDetailsContent() {
           </div>
         </div>
       </div>
-      <Footer />
+      <Footer config={config} />
     </div>
-  );
-}
-
-export default function BlogDetailsPage() {
-  return (
-    <Suspense fallback={
-      <div className="w-full flex items-center justify-center min-h-screen py-20 bg-neutral-white">
-        <div className="w-12 h-12 border-4 border-primary-400 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    }>
-      <BlogDetailsContent />
-    </Suspense>
   );
 }
