@@ -206,11 +206,11 @@ export default function Header() {
             className="flex items-center cursor-pointer select-none"
           >
             <img
-              src={companyLogo || '/shopsphere.webp'}
+              src={companyLogo || '/placeholder-1-1.webp'}
               alt="ShopSphere Logo"
               className="h-10 w-auto object-contain"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = '/shopsphere.webp';
+                (e.target as HTMLImageElement).src = '/placeholder-1-1.webp';
               }}
             />
           </div>
